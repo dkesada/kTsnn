@@ -5,9 +5,11 @@ import pandas as pd
 import plotly.express as plot
 import json
 
+
 # Line plot of a column in a dataframe
 def plot_col(dt, col):
     plot.line(dt, y=col).show()
+
 
 # Line plot of the loss in each epoch in train and validation
 def plot_train_val_loss(log):
@@ -17,9 +19,11 @@ def plot_train_val_loss(log):
     fig.update_layout(xaxis_title='Epochs', yaxis_title='Loss')
     fig.show()
 
+
 # Map function that returns a list with the result
 def map_w(func, col):
     return list(map(func, col))
+
 
 # Return the x and y dataframes for both train and validation
 # The dataframe is divided by cycles, and each cycle is part of
@@ -34,6 +38,7 @@ def get_train_test(dt, cv, obj_col, cyc_col):
     dt_train = dt_train.drop(columns=[cyc_col] + obj_col)
 
     return dt_test, y_test, dt_train, y_train
+
 
 # Define the structure of the TDNN and compile the model
 # Not parametrized for now, changes are hard coded inside
@@ -52,11 +57,13 @@ def train_tdnn(dt_train, y_train):
 
     return model
 
+
 # Fit the keras model to the training data and validate the results
 def fit_tdnn(dt_train, y_train, dt_test, y_test, model, epochs = 3, batch = 32):
     log = model.fit(dt_train, y_train, batch_size=batch, epochs=epochs, validation_data=(dt_test, y_test))
     plot_train_val_loss(log)
     return model
+
 
 # Main function that splits the data and trains a model
 def train_and_fit_tdnn(dt, cv, obj_col, cyc_col, epochs = 5, batch = 32):
@@ -65,6 +72,7 @@ def train_and_fit_tdnn(dt, cv, obj_col, cyc_col, epochs = 5, batch = 32):
     model = fit_tdnn(dt_train, y_train, dt_test, y_test, model, epochs, batch)
 
     return model
+
 
 # Function to do long term forecasting with a trained TDNN
 def predict_long_term(y_test, model, obj_var):
@@ -78,9 +86,10 @@ def predict_long_term(y_test, model, obj_var):
 
     return path
 
+
 # Script part that gets the data, trains a model and plots the results
 
-# JSON with the names of the variables and the columns
+# JSON with the path to the data and the names of the variables and the columns
 with open('aux_data.json', 'r') as json_file:
     aux_data = json.load(json_file)
 
@@ -89,7 +98,7 @@ dt_f = dt[dt[aux_data['cycles_col']] != 18]
 cv = [[17, 5, 1, 10], [6, 3, 13, 2], [15, 14, 9, 16], [12, 19, 11, 7], [8, 20, 4, 21]]
 
 obj_cols = dt_f.columns
-obj_cols = obj_cols[map_w(lambda x: 't_0' in x, obj_cols)] # The dataframe was folded in R with my "dbnR" package
+obj_cols = obj_cols[map_w(lambda x: 't_0' in x, obj_cols)]  # The dataframe was folded in R with my "dbnR" package
 obj_cols = list(obj_cols.drop(aux_data['cycles_col']))
 
 dt_test, y_test, _, _ = get_train_test(dt_f, cv[0], obj_col=obj_cols, cyc_col=aux_data['cycles_col'])
@@ -103,4 +112,13 @@ obj_idx = list(y_test.columns).index(aux_data['obj_var'])
 fig = plot.line()
 fig = fig.add_scatter(y=pred[:, obj_idx].flatten(), mode='lines', name='Prediction')
 fig = fig.add_scatter(y=y_test[aux_data['obj_var']], mode='lines', name='Reality')
+fig.show()
+
+# Long term forecasting
+lpred = predict_long_term(y_test.iloc[0:100], tdnn, obj_var=aux_data['obj_var'])
+
+# Plot of the predictions
+fig = plot.line()
+fig = fig.add_scatter(y=lpred, mode='lines', name='Prediction')
+fig = fig.add_scatter(y=y_test.iloc[0:100][aux_data['obj_var']], mode='lines', name='Reality')
 fig.show()
