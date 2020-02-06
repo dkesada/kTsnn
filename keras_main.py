@@ -82,7 +82,7 @@ def grep_columns(dt, sub):
 # Move the evidence one time slice and introduce the new predictions as evidence
 def move_evidence(evidence, particles):
     size = evidence.shape[1] / particles.shape[1]
-
+    evidence = evidence.copy()  # With love, SettingWithCopyWarning
     for i in range(1, int(size)):
         evidence.loc[:, grep_columns(evidence, 't_' + str(i+1))] =\
             evidence[grep_columns(evidence, 't_' + str(i))].values.flatten()
@@ -100,7 +100,7 @@ def predict_long_term(dt_test, y_test, model, obj_var):
         particles = model.predict(evidence)
         obj_idx = list(y_test.columns).index(obj_var)
         path = path + [particles[0, obj_idx]]
-        evidence = pd.DataFrame(data=particles, columns=dt_test.columns)
+        evidence = move_evidence(evidence, particles)
 
     return path
 
@@ -133,10 +133,10 @@ fig = fig.add_scatter(y=y_test[aux_data['obj_var']], mode='lines', name='Reality
 fig.show()
 
 # Long term forecasting
-lpred = predict_long_term(dt_test.iloc[100:200], tdnn, obj_var=aux_data['obj_var'])
+lpred = predict_long_term(dt_test.iloc[0:1000], y_test, tdnn, obj_var=aux_data['obj_var'])
 
 # Plot of the predictions
 fig = plot.line()
 fig = fig.add_scatter(y=lpred, mode='lines', name='Prediction')
-fig = fig.add_scatter(y=y_test.iloc[100:200][aux_data['obj_var']], mode='lines', name='Reality')
+fig = fig.add_scatter(y=y_test.iloc[0:1000][aux_data['obj_var']], mode='lines', name='Reality')
 fig.show()
