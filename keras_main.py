@@ -65,7 +65,7 @@ def fit_tdnn(dt_train, y_train, dt_test, y_test, model, epochs = 3, batch = 32):
     return model
 
 
-# Main function that splits the data and trains a model
+# Main function that splits the data and trains a model. Can be used with any dt_fold size
 def train_and_fit_tdnn(dt, cv, obj_col, cyc_col, epochs = 5, batch = 32):
     dt_test, y_test, dt_train, y_train = get_train_test(dt, cv, obj_col=obj_col, cyc_col=cyc_col)
     model = train_tdnn(dt_train, y_train)
@@ -74,15 +74,31 @@ def train_and_fit_tdnn(dt, cv, obj_col, cyc_col, epochs = 5, batch = 32):
     return model
 
 
+# Find the columns that have the given string in their names
+def grep_columns(dt, sub):
+    return dt.columns[map_w(lambda x: sub in x, dt.columns)]
+
+
+# Move the evidence one time slice and introduce the new predictions as evidence
+def move_evidence(evidence, particles):
+    size = evidence.shape[1] / particles.shape[1]
+
+    for i in range(1, size):
+        evidence.loc[:, grep_columns(evidence, 't_' + str(i+1))] = evidence[grep_columns(evidence, 't_' + str(i))]
+
+    evidence.loc[:,  grep_columns(evidence, 't_1')] = particles
+
+    return evidence
+
 # Function to do long term forecasting with a trained TDNN
-def predict_long_term(y_test, model, obj_var):
+def predict_long_term(dt_test, y_test, model, obj_var):
     path = []
-    evidence = y_test.iloc[0:1]
-    for i in range(y_test.shape[0]):
+    evidence = dt_test.iloc[0:1]
+    for i in range(dt_test.shape[0]):
         particles = model.predict(evidence)
         obj_idx = list(y_test.columns).index(obj_var)
         path = path + [particles[0, obj_idx]]
-        evidence = pd.DataFrame(data=particles, columns=y_test.columns)
+        evidence = pd.DataFrame(data=particles, columns=dt_test.columns)
 
     return path
 
@@ -104,7 +120,7 @@ obj_cols = list(obj_cols.drop(aux_data['cycles_col']))
 dt_test, y_test, _, _ = get_train_test(dt_f, cv[0], obj_col=obj_cols, cyc_col=aux_data['cycles_col'])
 
 # Train and predict
-tdnn = train_and_fit_tdnn(dt_f, cv[0], epochs=100, batch=100, obj_col=obj_cols, cyc_col=aux_data['cycles_col'])
+tdnn = train_and_fit_tdnn(dt_f, cv[0], epochs=150, batch=100, obj_col=obj_cols, cyc_col=aux_data['cycles_col'])
 pred = tdnn.predict(dt_test)
 obj_idx = list(y_test.columns).index(aux_data['obj_var'])
 
@@ -115,10 +131,10 @@ fig = fig.add_scatter(y=y_test[aux_data['obj_var']], mode='lines', name='Reality
 fig.show()
 
 # Long term forecasting
-lpred = predict_long_term(y_test.iloc[0:100], tdnn, obj_var=aux_data['obj_var'])
+lpred = predict_long_term(dt_test.iloc[100:200], tdnn, obj_var=aux_data['obj_var'])
 
 # Plot of the predictions
 fig = plot.line()
 fig = fig.add_scatter(y=lpred, mode='lines', name='Prediction')
-fig = fig.add_scatter(y=y_test.iloc[0:100][aux_data['obj_var']], mode='lines', name='Reality')
+fig = fig.add_scatter(y=y_test.iloc[100:200][aux_data['obj_var']], mode='lines', name='Reality')
 fig.show()
