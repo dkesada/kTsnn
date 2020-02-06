@@ -83,12 +83,14 @@ def grep_columns(dt, sub):
 def move_evidence(evidence, particles):
     size = evidence.shape[1] / particles.shape[1]
 
-    for i in range(1, size):
-        evidence.loc[:, grep_columns(evidence, 't_' + str(i+1))] = evidence[grep_columns(evidence, 't_' + str(i))]
+    for i in range(1, int(size)):
+        evidence.loc[:, grep_columns(evidence, 't_' + str(i+1))] =\
+            evidence[grep_columns(evidence, 't_' + str(i))].values.flatten()
 
-    evidence.loc[:,  grep_columns(evidence, 't_1')] = particles
+    evidence.loc[:, grep_columns(evidence, 't_1')] = particles
 
     return evidence
+
 
 # Function to do long term forecasting with a trained TDNN
 def predict_long_term(dt_test, y_test, model, obj_var):
