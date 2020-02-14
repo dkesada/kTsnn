@@ -6,7 +6,7 @@ class TsNetwork(ABC):
     def __init__(self, epochs, batch):
         self._epochs = epochs
         self._batch = batch
-        self._net = None
+        self._model = None
 
     @abstractmethod
     def train_net(self, x_train, y_train):
