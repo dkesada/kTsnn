@@ -1,2 +1,5 @@
 *.json
 /build/*
+.idea/
+/kTsnn/data/*
+__pycache__/

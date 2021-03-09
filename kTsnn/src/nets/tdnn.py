@@ -2,8 +2,8 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dense, Input, Dropout, Conv2D, Conv1D, Flatten
 from tensorflow.keras.optimizers import RMSprop, SGD, Adam
 import pandas as pd
-from ..utils import *
-from .net_factory import TsNetwork
+from utils import *
+from nets.net_factory import TsNetwork
 
 
 class TDNN(TsNetwork):
