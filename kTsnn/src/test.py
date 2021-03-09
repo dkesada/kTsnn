@@ -1,5 +1,5 @@
-from utils import *
-from nets.tdnn import TDNN
+from kTsnn.src.utils import *
+from kTsnn.src.nets.tdnn import TDNN
 import pandas as pd
 import os
 
