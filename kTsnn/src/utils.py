@@ -25,6 +25,17 @@ def map_w(func, col):
 # Return the x and y dataframes for both train and validation
 # The dataframe is divided by cycles, and each cycle is part of
 # a crossvalidation fold
+def get_train_test_val(dt, test, val, cyc_col):
+    dt_test = dt[map_w(lambda x: x in test, dt[cyc_col])]
+    dt_val = dt[map_w(lambda x: x in val, dt[cyc_col])]
+    dt_train = dt[map_w(lambda x: x not in (test + val), dt[cyc_col])]
+    dt_train = dt_train.drop(columns=cyc_col)
+    dt_test = dt_test.drop(columns=cyc_col)
+    dt_val = dt_val.drop(columns=cyc_col)
+
+    return dt_train, dt_test, dt_val
+
+# Old one
 def get_train_test(dt, cv, obj_col, cyc_col):
     in_test = map_w(lambda x: x in cv, dt[cyc_col])
     dt_test = dt[in_test]
@@ -44,13 +55,24 @@ def grep_columns(dt, sub):
 
 # Load a dataset stored in the 'data' folder
 def load_dt(file):
-    return pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "data\\" + file))
+    return pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "data/" + file))
 
 
 # Load the json info file. Its structure is {'obj_var': [...], 'idx_cyc': ..., 'cv': [[...],[...],...]}
 def load_info(file):
-    with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "data\\" + file)) as f:
+    with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "data/" + file)) as f:
         info = json.load(f)
     return info
+
+# Normalizes the train, test and validation datasets only using the mean and std of the train set
+def norm_dt(dt_train, dt_test, dt_val):
+    dt_mean = dt_train.mean()
+    dt_std = dt_train.std()
+    dt_train = (dt_train - dt_mean) / dt_std
+    dt_test = (dt_test - dt_mean) / dt_std
+    dt_val = (dt_val - dt_mean) / dt_std
+
+    return dt_train, dt_test, dt_val
+
 
 

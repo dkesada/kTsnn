@@ -17,7 +17,7 @@ class TDNN(TsNetwork):
         inputs = Input(shape=x_train.shape[1:])
         x = Dense(528, activation='relu')(inputs)
         x = Dense(274, activation='relu')(x)
-        #x = Dense(128, activation='relu')(x)
+        x = Dense(128, activation='relu')(x)
         #x = Dense(32, activation='relu')(x)
         #x = Dense(16, activation='relu')(x)
         #x = Dense(8, activation='relu')(x)
@@ -52,10 +52,10 @@ class TDNN(TsNetwork):
     # Function to do long term forecasting with a trained TDNN
     def predict_long_term(self, x_test, y_test, obj_var, ini, length, **kwargs):
         path = []
-        evidence = x_test.iloc[0:1]
-        for i in range(x_test.shape[0]):
+        evidence = x_test.iloc[ini:ini+1]
+        obj_idx = list(y_test.columns).index(obj_var)
+        for i in range(ini, ini + length):
             particles = self._model.predict(evidence)
-            obj_idx = list(y_test.columns).index(obj_var)
             path = path + [particles[0, obj_idx]]
             evidence = self.__move_evidence(evidence, particles)
 
