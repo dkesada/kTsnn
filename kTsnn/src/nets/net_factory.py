@@ -10,8 +10,10 @@ class TsNetwork(ABC):
 
     epochs: int
         number of epochs for training
-    batch: int
-        size of the batch
+    window: WindowGenerator
+        window with the training input_width, label_width and shift desired
+    model: tensorflow.keras.Sequential
+        structure of the model in case we want a different one from the default
 
     Methods
     -------
@@ -20,8 +22,6 @@ class TsNetwork(ABC):
         trains the NN with its own implemented method
     fit_net(x_train, y_train, x_test, y_test, **kwargs)
         fits the NN with its own implemented method
-    train_net(x_train, y_train, **kwargs)
-        trains the NN with its own implemented methods
     predict(x_test, y_test, **kwargs)
         predicts a dataset with the model
     predict_long_term(x_test, y_test, obj_var, ini, length, **kwargs)
@@ -29,23 +29,27 @@ class TsNetwork(ABC):
 
     """
 
-    def __init__(self, epochs, batch, **kwargs):
+    def __init__(self, epochs, window, model, **kwargs):
         self._epochs = epochs
-        self._batch = batch
-        self._model = None
+        self._window = window
+        self._model = model
 
     @abstractmethod
-    def train_net(self, x_train, y_train, **kwargs):
+    def train_net(self, loss, optimizer, metric, **kwargs):
         pass
 
     @abstractmethod
-    def fit_net(self, x_train, y_train, x_test, y_test, **kwargs):
+    def fit_net(self, patience, **kwargs):
         pass
 
     @abstractmethod
-    def predict(self, x_test, y_test, **kwargs):
+    def predict(self, dt, **kwargs):
         pass
 
     @abstractmethod
-    def predict_long_term(self, x_test, y_test, obj_var, ini, length, **kwargs):
+    def predict_long_term(self, dt, obj_var, ini, length, **kwargs):
+        pass
+
+    @abstractmethod
+    def _default_model(self, **kwargs):
         pass

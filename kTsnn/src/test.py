@@ -1,129 +1,10 @@
 from kTsnn.src.utils import *
-from kTsnn.src.nets.tdnn import TDNN
+from kTsnn.src.nets.cnn import Conv1dnn
 from kTsnn.src.nets.transition import Transition
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
-
-class WindowGenerator():
-    def __init__(self, input_width, label_width, shift,
-                 dt_train, dt_test, dt_val,
-                 label_columns=None):
-        # Store the raw data.
-        self.dt_train = dt_train
-        self.dt_val = dt_val
-        self.dt_test = dt_test
-
-        # Work out the label column indices.
-        self.label_columns = label_columns
-        if label_columns is not None:
-            self.label_columns_indices = {name: i for i, name in
-                                          enumerate(label_columns)}
-        self.column_indices = {name: i for i, name in
-                               enumerate(dt_train.columns)}
-
-        # Work out the window parameters.
-        self.input_width = input_width
-        self.label_width = label_width
-        self.shift = shift
-
-        self.total_window_size = input_width + shift
-
-        self.input_slice = slice(0, input_width)
-        self.input_indices = np.arange(self.total_window_size)[self.input_slice]
-
-        self.label_start = self.total_window_size - self.label_width
-        self.labels_slice = slice(self.label_start, None)
-        self.label_indices = np.arange(self.total_window_size)[self.labels_slice]
-
-    def __repr__(self):
-        return '\n'.join([
-            f'Total window size: {self.total_window_size}',
-            f'Input indices: {self.input_indices}',
-            f'Label indices: {self.label_indices}',
-            f'Label column name(s): {self.label_columns}'])
-
-    def split_window(self, features):
-        inputs = features[:, self.input_slice, :]
-        labels = features[:, self.labels_slice, :]
-        if self.label_columns is not None:
-            labels = tf.stack(
-                [labels[:, :, self.column_indices[name]] for name in self.label_columns],
-                axis=-1)
-        inputs.set_shape([None, self.input_width, None])
-        labels.set_shape([None, self.label_width, None])
-
-        return inputs, labels
-
-    def plot(self, plot_col, model=None, max_subplots=3):
-        inputs, labels = self.example
-        plt.figure(figsize=(12, 8))
-        plot_col_index = self.column_indices[plot_col]
-        max_n = min(max_subplots, len(inputs))
-        for n in range(max_n):
-            plt.subplot(3, 1, n + 1)
-            plt.ylabel(f'{plot_col} [normed]')
-            plt.plot(self.input_indices, inputs[n, :, plot_col_index],
-                     label='Inputs', marker='.', zorder=-10)
-
-            if self.label_columns:
-                label_col_index = self.label_columns_indices.get(plot_col, None)
-            else:
-                label_col_index = plot_col_index
-
-            if label_col_index is None:
-                continue
-
-            plt.scatter(self.label_indices, labels[n, :, label_col_index],
-                        edgecolors='k', label='Labels', c='#2ca02c', s=64)
-            if model is not None:
-                predictions = model(inputs)
-                plt.scatter(self.label_indices, predictions[n, :, label_col_index],
-                            marker='X', edgecolors='k', label='Predictions',
-                            c='#ff7f0e', s=64)
-
-            if n == 0:
-                plt.legend()
-
-        plt.xlabel('Time [h]')
-
-    def make_dataset(self, data):
-        data = np.array(data, dtype=np.float32)
-        ds = tf.keras.preprocessing.timeseries_dataset_from_array(
-            data=data,
-            targets=None,
-            sequence_length=self.total_window_size,
-            sequence_stride=1,
-            shuffle=True,
-            batch_size=32, )
-
-        ds = ds.map(self.split_window)
-
-        return ds
-
-    @property
-    def train(self):
-        return self.make_dataset(self.dt_train)
-
-    @property
-    def test(self):
-        return self.make_dataset(self.dt_test)
-
-    @property
-    def val(self):
-        return self.make_dataset(self.dt_val)
-
-    @property
-    def example(self):
-        """Get and cache an example batch of `inputs, labels` for plotting."""
-        result = getattr(self, '_example', None)
-        if result is None:
-            # No example batch was found, so get one from the `.train` dataset
-            result = next(iter(self.train))
-            # And cache it for next time
-            self._example = result
-        return result
-
+from kTsnn.src.nets.window_gen import WindowGenerator
 
 
 dt_file = 'dt_unfolded.csv'
@@ -240,6 +121,11 @@ if __name__ == '__main__':
                          dt_train=dt_train, dt_test=dt_test, dt_val=dt_val,
                          label_columns=info['obj_var'])
     CONV_WIDTH = 7
+
+    # model = Conv1dnn(MAX_EPOCHS, multi_window, num_features)
+    # model.train_net()
+    # model.fit_net()
+
     multi_conv_model = tf.keras.Sequential([
         # Shape [batch, time, features] => [batch, CONV_WIDTH, features]
         tf.keras.layers.Lambda(lambda x: x[:, -CONV_WIDTH:, :]),
@@ -257,3 +143,19 @@ if __name__ == '__main__':
     val_p['Conv'] = multi_conv_model.evaluate(multi_window.val)
     p['Conv'] = multi_conv_model.evaluate(multi_window.test, verbose=0)
     multi_window.plot(plot_col=info['obj_var'][0], model=multi_conv_model)
+
+
+    # Refractor into forecasting function inside the cnn class
+    test = multi_window.make_dataset(dt_test.loc[0:57, :])
+    inputs, labels = next(iter(test))
+    tmp = multi_conv_model.predict(inputs)
+
+    from matplotlib.pyplot import plot as plt
+    from matplotlib.pyplot import cla
+
+    cla()
+    plt(range(7), inputs[0, :, 34]) # Initial 7 values provided
+    plt(range(6, 56), labels[0, :, 0]) # Expected 50 values afterwards
+    #plt(range(6, 56), dt_test[info['obj_var']][8:58]) # Real 50 values
+    plt(range(6, 56), tmp[0, :, 0]) # Predicted 50 values
+

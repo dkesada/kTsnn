@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 
 # Adapted from https://www.tensorflow.org/tutorials/structured_data/time_series#recurrent_neural_network
-class WindowGenerator():
+class WindowGenerator:
     def __init__(self, input_width, label_width, shift,
                  dt_train, dt_test, dt_val,
                  label_columns=None):
