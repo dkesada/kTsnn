@@ -1,6 +1,5 @@
 from kTsnn.src.utils import *
 from kTsnn.src.nets.cnn import Conv1dnn
-from kTsnn.src.nets.transition import Transition
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
@@ -29,20 +28,8 @@ if __name__ == '__main__':
                                          dt_train=dt_train, dt_test=dt_test, dt_val=dt_val,
                                          label_columns=info['obj_var'])
 
-    # Transition model
-    model = Transition(label_index=single_step_window.column_indices[info['obj_var'][0]])
-    model.compile(loss=tf.losses.MeanSquaredError(), metrics=[tf.metrics.MeanAbsoluteError()])
-
     val_p = {}
     p = {}
-    val_p['Transition'] = model.evaluate(single_step_window.val)
-    p['Transition'] = model.evaluate(single_step_window.test, verbose=0)
-
-    window2 = WindowGenerator(input_width=24, label_width=24, shift=1,
-                              dt_train=dt_train, dt_test=dt_test, dt_val=dt_val,
-                              label_columns=info['obj_var'])
-
-    #window2.plot(plot_col=info['obj_var'][0], model=model)
 
     # Generic compile
     MAX_EPOCHS = 20
@@ -122,40 +109,41 @@ if __name__ == '__main__':
                          label_columns=info['obj_var'])
     CONV_WIDTH = 7
 
-    # model = Conv1dnn(MAX_EPOCHS, multi_window, num_features)
-    # model.train_net()
-    # model.fit_net()
+    model = Conv1dnn(MAX_EPOCHS, multi_window, num_features, conv_width=CONV_WIDTH)
+    model.train_net()
+    model.fit_net()
+    pred = model.predict(dt_test.loc[0:57, :], obj_var=info['obj_var'][0])
 
-    multi_conv_model = tf.keras.Sequential([
-        # Shape [batch, time, features] => [batch, CONV_WIDTH, features]
-        tf.keras.layers.Lambda(lambda x: x[:, -CONV_WIDTH:, :]),
-        # Shape => [batch, 1, conv_units]
-        tf.keras.layers.Conv1D(256, activation='relu', kernel_size=CONV_WIDTH),
-        # Shape => [batch, 1,  out_steps*features]
-        tf.keras.layers.Dense(OUT_STEPS * num_features,
-                              kernel_initializer=tf.initializers.zeros),
-        # Shape => [batch, out_steps, features]
-        tf.keras.layers.Reshape([OUT_STEPS, num_features])
-    ])
+    # multi_conv_model = tf.keras.Sequential([
+    #     # Shape [batch, time, features] => [batch, CONV_WIDTH, features]
+    #     tf.keras.layers.Lambda(lambda x: x[:, -CONV_WIDTH:, :]),
+    #     # Shape => [batch, 1, conv_units]
+    #     tf.keras.layers.Conv1D(256, activation='relu', kernel_size=CONV_WIDTH),
+    #     # Shape => [batch, 1,  out_steps*features]
+    #     tf.keras.layers.Dense(OUT_STEPS * num_features,
+    #                           kernel_initializer=tf.initializers.zeros),
+    #     # Shape => [batch, out_steps, features]
+    #     tf.keras.layers.Reshape([OUT_STEPS, num_features])
+    # ])
 
-    history = compile_and_fit(multi_conv_model, multi_window)
-
-    val_p['Conv'] = multi_conv_model.evaluate(multi_window.val)
-    p['Conv'] = multi_conv_model.evaluate(multi_window.test, verbose=0)
-    multi_window.plot(plot_col=info['obj_var'][0], model=multi_conv_model)
-
-
-    # Refractor into forecasting function inside the cnn class
-    test = multi_window.make_dataset(dt_test.loc[0:57, :])
-    inputs, labels = next(iter(test))
-    tmp = multi_conv_model.predict(inputs)
-
-    from matplotlib.pyplot import plot as plt
-    from matplotlib.pyplot import cla
-
-    cla()
-    plt(range(7), inputs[0, :, 34]) # Initial 7 values provided
-    plt(range(6, 56), labels[0, :, 0]) # Expected 50 values afterwards
-    #plt(range(6, 56), dt_test[info['obj_var']][8:58]) # Real 50 values
-    plt(range(6, 56), tmp[0, :, 0]) # Predicted 50 values
+    # history = compile_and_fit(multi_conv_model, multi_window)
+    #
+    # val_p['Conv'] = multi_conv_model.evaluate(multi_window.val)
+    # p['Conv'] = multi_conv_model.evaluate(multi_window.test, verbose=0)
+    # multi_window.plot(plot_col=info['obj_var'][0], model=multi_conv_model)
+    #
+    #
+    # # Refractor into forecasting function inside the cnn class
+    # test = multi_window.make_dataset(dt_test.loc[0:57, :])
+    # inputs, labels = next(iter(test))
+    # tmp = multi_conv_model.predict(inputs)
+    #
+    # from matplotlib.pyplot import plot as plt
+    # from matplotlib.pyplot import cla
+    #
+    # cla()
+    # plt(range(7), inputs[0, :, 34]) # Initial 7 values provided
+    # plt(range(6, 56), labels[0, :, 0]) # Expected 50 values afterwards
+    # #plt(range(6, 56), dt_test[info['obj_var']][8:58]) # Real 50 values
+    # plt(range(6, 56), tmp[0, :, 0]) # Predicted 50 values
 

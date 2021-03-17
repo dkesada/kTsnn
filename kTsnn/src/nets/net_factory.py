@@ -43,7 +43,7 @@ class TsNetwork(ABC):
         pass
 
     @abstractmethod
-    def predict(self, dt, **kwargs):
+    def predict(self, dt, obj_var, show_plot):
         pass
 
     @abstractmethod

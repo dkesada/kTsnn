@@ -1,6 +1,7 @@
 import tensorflow as tf
 from kTsnn.src.utils import *
 from .net_factory import TsNetwork
+from pandas import DataFrame
 from matplotlib.pyplot import plot as plt
 from matplotlib.pyplot import cla
 
@@ -29,8 +30,30 @@ class Conv1dnn(TsNetwork):
 
         return log
 
-    def predict(self, dt):
-        return self._model.predict(dt)
+    # Predict function that uses the first 'input_width' values to forecast the next 'label_width' values.
+    # Be careful with these first values, be sure to pass the values that you want to use as evidence first.
+    def predict(self, dt, obj_var, show_plot=True):
+        if len(dt) < self._window.input_width:
+            raise ValueError(f'At least {self._window.input_width} previous instants have to be provided')
+        elif len(dt) < self._window.total_window_size: # If we only have the input values, the rest of the df is empty padding
+            dt = dt.loc[0:(self._window.input_width - 1), :]
+            dt_empty = DataFrame(None, index=range(self._window.label_width), columns=dt.columns)
+            dt = dt.append(dt_empty)
+            del dt_empty
+
+        prep_dt = self._window.make_dataset(dt)
+        inputs, labels = next(iter(prep_dt))
+        preds = self._model.predict(inputs)
+
+        if show_plot:
+            cla()
+            plt(range(self._window.input_width), inputs[0, :, self._window.column_indices.get(obj_var)])  # Initial values provided
+            plt(range(self._window.input_width-1, self._window.total_window_size-1),
+                labels[0, :, self._window.label_columns_indices.get(obj_var)])  # Real values afterwards if any
+            plt(range(self._window.input_width-1, self._window.total_window_size-1),
+                preds[0, :, self._window.label_columns_indices.get(obj_var)])  # Predicted values
+
+        return preds
 
     # Function to do long term forecasting with a trained TDNN
     def predict_long_term(self, x_test, y_test, obj_var):
