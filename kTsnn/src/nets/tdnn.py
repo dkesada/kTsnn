@@ -6,6 +6,7 @@ from kTsnn.src.utils import *
 from .net_factory import TsNetwork
 
 
+# Obsolete, avoid using until refractored
 class TDNN(TsNetwork):
     def __init__(self, epochs, batch):
         super().__init__(epochs, batch)
@@ -30,7 +31,7 @@ class TDNN(TsNetwork):
     def fit_net(self, x_train, y_train, x_test, y_test, **kwargs):
         log = self._model.fit(x_train, y_train, batch_size=self._batch,
                               epochs=self._epochs, validation_data=(x_test, y_test))
-        plot_train_val_loss(log)
+        self._plot_train_val_loss(log)
         return log
 
     # Move the evidence one time slice and introduce the new predictions as evidence

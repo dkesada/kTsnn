@@ -1,20 +1,16 @@
-import plotly.express as plot
+import matplotlib.pyplot as plt
 import os
 import pandas as pd
 import json
 
+
 # Line plot of a column in a dataframe
 def plot_col(dt, col):
-    plot.line(dt, y=col).show()
-
-
-# Line plot of the loss in each epoch in train and validation
-def plot_train_val_loss(log):
-    fig = plot.line()
-    fig = fig.add_scatter(y=log.history['loss'], mode='lines', name='Train loss')
-    fig = fig.add_scatter(y=log.history['val_loss'], mode='lines', name='Validation loss')
-    fig.update_layout(xaxis_title='Epochs', yaxis_title='Loss')
-    fig.show()
+    plt.figure()
+    plt.plot(dt[col])
+    plt.xlabel('Time')
+    plt.ylabel(col)
+    plt.show()
 
 
 # Map function that returns a list with the result
@@ -63,6 +59,7 @@ def load_info(file):
     with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "data/" + file)) as f:
         info = json.load(f)
     return info
+
 
 # Normalizes the train, test and validation datasets only using the mean and std of the train set
 def norm_dt(dt_train, dt_test, dt_val):

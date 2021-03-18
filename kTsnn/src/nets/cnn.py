@@ -2,8 +2,7 @@ import tensorflow as tf
 from kTsnn.src.utils import *
 from .net_factory import TsNetwork
 from pandas import DataFrame
-from matplotlib.pyplot import plot as plt
-from matplotlib.pyplot import cla
+import matplotlib.pyplot as plt
 
 
 class Conv1dnn(TsNetwork):
@@ -20,13 +19,15 @@ class Conv1dnn(TsNetwork):
         self._model.compile(loss=loss, optimizer=opt, metrics=metrics)
 
     # Fit the keras model to the training data and validate the results
-    def fit_net(self, patience=5):
-        early_stopping = None
+    def fit_net(self, patience=5, show_plot=True):
         if patience is not None:
             early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss',patience=patience,mode='min')
-        log = self._model.fit(self._window.train, epochs=self._epochs, validation_data=self._window.val,
-                              callbacks=[early_stopping])
-        plot_train_val_loss(log)
+            log = self._model.fit(self._window.train, epochs=self._epochs, validation_data=self._window.val,
+                                  callbacks=[early_stopping])
+        else:
+            log = self._model.fit(self._window.train, epochs=self._epochs, validation_data=self._window.val)
+        if show_plot:
+            self._plot_train_val_loss(log)
 
         return log
 
@@ -46,12 +47,17 @@ class Conv1dnn(TsNetwork):
         preds = self._model.predict(inputs)
 
         if show_plot:
-            cla()
-            plt(range(self._window.input_width), inputs[0, :, self._window.column_indices.get(obj_var)])  # Initial values provided
-            plt(range(self._window.input_width-1, self._window.total_window_size-1),
-                labels[0, :, self._window.label_columns_indices.get(obj_var)])  # Real values afterwards if any
-            plt(range(self._window.input_width-1, self._window.total_window_size-1),
-                preds[0, :, self._window.label_columns_indices.get(obj_var)])  # Predicted values
+            plt.figure()
+            initial_line, = plt.plot(range(self._window.input_width),
+                                     inputs[0, :, self._window.column_indices.get(obj_var)], label='Initial values')
+            real_line, = plt.plot(range(self._window.input_width-1, self._window.total_window_size-1),
+                                  labels[0, :, self._window.label_columns_indices.get(obj_var)], label='Real values')
+            pred_line, = plt.plot(range(self._window.input_width-1, self._window.total_window_size-1),
+                                  preds[0, :, self._window.label_columns_indices.get(obj_var)], label='Predicted values')
+            plt.legend(handles=[initial_line, real_line, pred_line])
+            plt.ylabel(obj_var)
+            plt.xlabel('Time (h)')
+            plt.show()
 
         return preds
 

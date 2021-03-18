@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import matplotlib.pyplot as plt
 
 
 class TsNetwork(ABC):
@@ -49,6 +50,16 @@ class TsNetwork(ABC):
     @abstractmethod
     def predict_long_term(self, dt, obj_var, ini, length, **kwargs):
         pass
+
+    @staticmethod
+    def _plot_train_val_loss(log):
+        plt.figure()
+        train_line, = plt.plot(log.history['loss'], label='Train loss')
+        val_line, = plt.plot(log.history['val_loss'], label='Validation loss')
+        plt.legend(handles=[train_line, val_line])
+        plt.xlabel("Epochs")
+        plt.ylabel("Loss")
+        plt.show()
 
     @abstractmethod
     def _default_model(self, **kwargs):
