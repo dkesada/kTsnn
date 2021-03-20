@@ -3,6 +3,7 @@ from kTsnn.src.utils import *
 from .net_factory import TsNetwork
 from pandas import DataFrame
 import matplotlib.pyplot as plt
+from numpy import zeros, append
 
 
 class Conv1dnn(TsNetwork):
@@ -37,7 +38,7 @@ class Conv1dnn(TsNetwork):
         if len(dt) < self._window.input_width:
             raise ValueError(f'At least {self._window.input_width} previous instants have to be provided')
         elif len(dt) < self._window.total_window_size: # If we only have the input values, the rest of the df is empty padding
-            dt = dt.loc[0:(self._window.input_width - 1), :]
+            dt = dt.iloc[0:self._window.input_width, :]
             dt_empty = DataFrame(None, index=range(self._window.label_width), columns=dt.columns)
             dt = dt.append(dt_empty)
             del dt_empty
@@ -47,24 +48,34 @@ class Conv1dnn(TsNetwork):
         preds = self._model.predict(inputs)
 
         if show_plot:
-            plt.figure()
-            initial_line, = plt.plot(range(self._window.input_width),
-                                     inputs[0, :, self._window.column_indices.get(obj_var)], label='Initial values')
-            real_line, = plt.plot(range(self._window.input_width-1, self._window.total_window_size-1),
-                                  labels[0, :, self._window.label_columns_indices.get(obj_var)], label='Real values')
-            pred_line, = plt.plot(range(self._window.input_width-1, self._window.total_window_size-1),
-                                  preds[0, :, self._window.label_columns_indices.get(obj_var)], label='Predicted values')
-            plt.legend(handles=[initial_line, real_line, pred_line])
-            plt.ylabel(obj_var)
-            plt.xlabel('Time (h)')
-            plt.show()
+            self._plot_predictions(inputs, labels, preds, obj_var)
 
         return preds
 
     # Function to do long term forecasting with a trained TDNN
-    def predict_long_term(self, x_test, y_test, obj_var):
+    def predict_long_term(self, dt, obj_var, length, show_plot=True):
+        if len(dt) < self._window.input_width:
+            raise ValueError(f'At least {self._window.input_width} previous instants have to be provided')
 
-        return None
+        dt_ini = dt.iloc[0:self._window.input_width, :]
+        dt_empty = DataFrame(None, index=range(self._window.label_width), columns=dt_ini.columns)
+        dt_ini = dt_ini.append(dt_empty)
+
+        iterations = -(-length // self._window.label_width)  # Number of recurrent steps. Ceiling of the division
+        path = zeros((0, self._num_features))
+        for i in range(iterations):
+            prep_dt = self._window.make_dataset(dt_ini)
+            inputs, labels = next(iter(prep_dt))
+            preds = self._model.predict(inputs)
+            path = append(path, preds[0, :, :], axis=0)
+            dt_ini.iloc[0:(self._window.input_width - 1), :] = \
+                preds[0, range(self._window.label_width-self._window.input_width+1,
+                               self._window.label_width), :]  # Move the predictions as evidence
+
+        if show_plot:
+            self._plot_predictions_long_term(dt, path, obj_var, length)
+
+        return path
 
     def _default_model(self):
         return tf.keras.Sequential([
@@ -77,6 +88,34 @@ class Conv1dnn(TsNetwork):
                                           kernel_initializer=tf.initializers.zeros),
                     # Shape => [batch, out_steps, features]
                     tf.keras.layers.Reshape([self._out_steps, self._num_features])])
+
+    def _plot_predictions(self, inputs, labels, preds, obj_var):
+        plt.figure()
+        initial_line, = plt.plot(range(self._window.input_width),
+                                 inputs[0, :, self._window.column_indices.get(obj_var)], label='Initial values')
+        real_line, = plt.plot(range(self._window.input_width - 1, self._window.total_window_size - 1),
+                              labels[0, :, self._window.label_columns_indices.get(obj_var)], label='Real values')
+        pred_line, = plt.plot(range(self._window.input_width - 1, self._window.total_window_size - 1),
+                              preds[0, :, self._window.label_columns_indices.get(obj_var)],
+                              label='Predicted values')
+        plt.legend(handles=[initial_line, real_line, pred_line])
+        plt.ylabel(obj_var)
+        plt.xlabel('Time (h)')
+        plt.show()
+
+    def _plot_predictions_long_term(self, dt, path, obj_var, length):
+        plt.figure()
+        initial_line, = plt.plot(range(self._window.input_width),
+                                 dt[obj_var][0:self._window.input_width], label='Initial values')
+        real_line, = plt.plot(range(self._window.input_width - 1, length + self._window.input_width - 1),
+                              dt[obj_var][range(self._window.input_width, length+self._window.input_width)], label='Real values')
+        pred_line, = plt.plot(range(self._window.input_width - 1, length),
+                              path[range(self._window.input_width-1, length),
+                                   self._window.label_columns_indices.get(obj_var)],label='Predicted values')
+        plt.legend(handles=[initial_line, real_line, pred_line])
+        plt.ylabel(obj_var)
+        plt.xlabel('Time (h)')
+        plt.show()
 
     # Move the evidence one time slice and introduce the new predictions as evidence
     @staticmethod
