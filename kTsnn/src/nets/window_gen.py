@@ -66,7 +66,7 @@ class WindowGenerator:
             plt.plot(self.input_indices, inputs[n, :, plot_col_index],
                      label='Inputs', marker='.', zorder=-10)
 
-            if self.label_columns:
+            if self.label_columns is not None:
                 label_col_index = self.label_columns_indices.get(plot_col, None)
             else:
                 label_col_index = plot_col_index

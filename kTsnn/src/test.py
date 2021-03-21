@@ -22,28 +22,30 @@ if __name__ == '__main__':
     info = load_info(INFO_FILE)
 
     dt_train, dt_test, dt_val = get_train_test_val(dt, info['test'], info['val'], info['idx_cyc'])
-    #dt_train, dt_test, dt_val = norm_dt(dt_train, dt_test, dt_val)
+    dt_train, dt_test, dt_val = norm_dt(dt_train, dt_test, dt_val)
 
     num_features = dt_train.shape[1]
 
     # Forecasting into the future
-    OUT_STEPS = 7
-    CONV_WIDTH = 7
-    INPUT_WIDTH = 7
+    OUT_STEPS = 24
+    CONV_WIDTH = 3
+    INPUT_WIDTH = 24
     multi_window = WindowGenerator(input_width=INPUT_WIDTH, label_width=OUT_STEPS, shift=OUT_STEPS,
                          dt_train=dt_train, dt_test=dt_test, dt_val=dt_val,
                          label_columns=dt_train.columns)  #info['obj_var'])
 
 
-    #model = Conv1dnn(MAX_EPOCHS, multi_window, num_features, model=None, conv_width=CONV_WIDTH, out_steps=OUT_STEPS)
-    model = AutoLSTM(MAX_EPOCHS, multi_window, num_features, units=32, out_steps=OUT_STEPS)
+    model = Conv1dnn(MAX_EPOCHS, multi_window, num_features, model=None, conv_width=CONV_WIDTH, out_steps=OUT_STEPS)
+    #model = AutoLSTM(MAX_EPOCHS, multi_window, num_features, units=32, out_steps=OUT_STEPS)
     model.train_net()
     model.fit_net(patience=5)
 
-    ini = 0
+    ini = 100
 
-    #pred = model.predict(dt_test.loc[ini:(ini+INPUT_WIDTH+OUT_STEPS), :], obj_var=info['obj_var'][0])
-    path = model.predict_long_term(dt_test, obj_var=info['obj_var'][0], length=OUT_STEPS)
+    pred = model.predict(dt_test.iloc[ini:(ini+INPUT_WIDTH+OUT_STEPS), :], obj_var=info['obj_var'][0])
+    path = model.predict_long_term(dt_test.iloc[ini:(len(dt_test)), :], obj_var=info['obj_var'][0], length=96)
+
+
 
 
 
