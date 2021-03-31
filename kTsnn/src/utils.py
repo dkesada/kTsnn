@@ -3,6 +3,10 @@ import os
 import pandas as pd
 import json
 import numpy as np
+import time
+from kTsnn.src.nets.cnn import Conv1dnn
+from kTsnn.src.nets.lstm import AutoLSTM
+from kTsnn.src.nets.window_gen import WindowGenerator
 
 
 # Line plot of a column in a dataframe
@@ -32,6 +36,7 @@ def get_train_test_val(dt, test, val, cyc_col):
     dt_val = dt_val.drop(columns=cyc_col)
 
     return dt_train, dt_test, dt_val, cyc_idx_test
+
 
 # Old one
 def get_train_test(dt, cv, obj_col, cyc_col):
@@ -64,14 +69,14 @@ def load_info(file):
 
 
 # Normalizes the train, test and validation datasets only using the mean and std of the train set
-def norm_dt(dt_train, dt_test, dt_val):
+def norm_dt(dt_train, dt_test, dt_val, obj_var):
     dt_mean = dt_train.mean()
     dt_sd = dt_train.std()
     dt_train = (dt_train - dt_mean) / dt_sd
     dt_test = (dt_test - dt_mean) / dt_sd
     dt_val = (dt_val - dt_mean) / dt_sd
-    dt_mean = dt_mean[dt_train.columns.get_loc(info['obj_var'][0])]
-    dt_sd = dt_sd[dt_train.columns.get_loc(info['obj_var'][0])]
+    dt_mean = dt_mean[dt_train.columns.get_loc(obj_var)]
+    dt_sd = dt_sd[dt_train.columns.get_loc(obj_var)]
 
     return dt_train, dt_test, dt_val, dt_mean, dt_sd
 
@@ -118,3 +123,37 @@ def eval_test(model, dt_test, cyc_idx_test, ini, length, obj_var, mean, sd, show
     return res
 
 
+def main_pipeline(dt, cv, idx_cyc, obj_var, ini, length, out_steps, conv_width, input_width,
+                  max_epochs, patience, model_arch=None, mode = 3):
+    # Obtain the correspondent cycles from the dataset
+    dt_train, dt_test, dt_val, cyc_idx_test = get_train_test_val(dt, cv['test'], cv['val'], idx_cyc)
+    dt_train, dt_test, dt_val, dt_mean, dt_sd = norm_dt(dt_train, dt_test, dt_val, obj_var)
+
+    num_features = dt_train.shape[1]
+
+    # Create the temporal window
+    multi_window = WindowGenerator(input_width=input_width, label_width=out_steps, shift=out_steps,
+                                   dt_train=dt_train, dt_test=dt_test, dt_val=dt_val,
+                                   label_columns=dt_train.columns)  # obj_var
+
+    # Fit the model
+    tmp = time.time()
+    model = Conv1dnn(max_epochs, multi_window, num_features, model=model_arch, conv_width=conv_width, out_steps=out_steps)
+    # model = AutoLSTM(MAX_EPOCHS, multi_window, num_features, units=32, out_steps=out_steps)
+    model.train_net()
+    model.fit_net(patience=patience)
+    print("Elapsed training time: {:f} seconds".format(time.time() - tmp))
+
+    # Forecasting
+    if mode == 0:  # Simple prediction of the output
+        res = model.predict(dt_test.iloc[ini:(ini + input_width + out_steps), :], obj_var=obj_var)
+
+    elif mode == 1:  # Forecast of a certain length
+        tmp = time.time()
+        res = model.predict_long_term(dt_test.iloc[ini:(len(dt_test)), :], obj_var=obj_var, length=length)
+        print("Elapsed forecasting time: {:f} seconds".format(time.time() - tmp))
+
+    else:  # Evaluate the MAE of the model
+        res = eval_test(model, dt_test, cyc_idx_test, ini, length, obj_var, dt_mean, dt_sd)
+
+    return res, model
