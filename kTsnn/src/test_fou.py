@@ -21,13 +21,13 @@ if __name__ == '__main__':
     res = []
 
     # Settings
-    out_steps = 24
-    conv_width = 7
-    input_width = 24
-    ini = 0
+    out_steps = 5
+    conv_width = 3
+    input_width = 5
+    ini = 100
     length = 50
     max_epochs = 300
-    patience = 5
+    patience = 10
     model_arch = None
 
     # model_arch = tf.keras.Sequential([
@@ -47,16 +47,4 @@ if __name__ == '__main__':
         res.append(cv_res.mean())
 
     print(np.mean(res))
-
-
-
-
-
-
-
-
-
-
-
-
 
