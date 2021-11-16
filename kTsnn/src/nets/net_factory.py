@@ -30,10 +30,17 @@ class TsNetwork(ABC):
 
     """
 
-    def __init__(self, epochs, window, model, **kwargs):
+    def __init__(self, epochs, window, model, out_steps, **kwargs):
         self._epochs = epochs
         self._window = window
         self._model = model
+        self._out_steps = out_steps
+
+    def get_input_width(self):
+        return self._window.input_width
+
+    def get_out_steps(self):
+        return self._out_steps
 
     @abstractmethod
     def train_net(self, loss, optimizer, metric, **kwargs):

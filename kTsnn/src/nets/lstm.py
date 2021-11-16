@@ -4,18 +4,27 @@ from pandas import DataFrame
 import matplotlib.pyplot as plt
 
 
-class AutoLSTM(TsNetwork, tf.keras.Model):
-    def __init__(self, epochs, window, num_features, units=32, out_steps=50):
-        TsNetwork.__init__(self, epochs, window, None)
-        tf.keras.Model.__init__(self)
-        self.out_steps = out_steps
+class AutoLSTM(TsNetwork):
+    def __init__(self, epochs, window, num_features, model=None, units=32, out_steps=50):
         self._num_features = num_features
-        self.units = units
-        self.lstm_cell = tf.keras.layers.LSTMCell(units)
-        # Also wrap the LSTMCell in an RNN to simplify the `warmup` method.
-        self.lstm_rnn = tf.keras.layers.RNN(self.lstm_cell, return_state=True)
-        self.dense = tf.keras.layers.Dense(num_features)
+        self._units = units
+        self._out_steps = out_steps
+        if model is None:
+            model = self._default_model()
+        super().__init__(epochs, window, model)
 
+        # Obsolete?
+        # TsNetwork.__init__(self, epochs, window, None)
+        # tf.keras.Model.__init__(self)
+        # self.out_steps = out_steps
+        # self._num_features = num_features
+        # self.units = units
+        # self.lstm_cell = tf.keras.layers.LSTMCell(units)
+        # # Also wrap the LSTMCell in an RNN to simplify the `warmup` method.
+        # self.lstm_rnn = tf.keras.layers.RNN(self.lstm_cell, return_state=True)
+        # self.dense = tf.keras.layers.Dense(num_features)
+
+    # Obsolete?
     def warmup(self, inputs):
         # inputs.shape => (batch, time, features)
         # x.shape => (batch, lstm_units)
@@ -26,8 +35,9 @@ class AutoLSTM(TsNetwork, tf.keras.Model):
         return prediction, state
 
     # Define the loss, optimizer and metrics and compile the model
-    def train_net(self, loss=tf.losses.MeanSquaredError(), opt=tf.optimizers.Adam(), metrics=[tf.metrics.MeanAbsoluteError()]):
-        self.compile(loss=loss, optimizer=opt, metrics=metrics)
+    def train_net(self, loss=tf.losses.MeanSquaredError(), opt=tf.optimizers.Adam(learning_rate=0.0001, ),
+                  metrics=[tf.metrics.MeanAbsoluteError()]):
+        self._model.compile(loss=loss, optimizer=opt, metrics=metrics)
 
     # Fit the keras model to the training data and validate the results
     def fit_net(self, patience=5, show_plot=True):
@@ -87,7 +97,17 @@ class AutoLSTM(TsNetwork, tf.keras.Model):
         return predictions
 
     def _default_model(self):
-        return None
+        return tf.keras.Sequential([
+            # Shape [batch, time, features]
+            tf.keras.layers.LSTM(self._units, batch_input_shape=)
+            tf.keras.layers.Lambda(lambda x: x[:, -self._conv_width:, :]),
+            # Shape => [batch, 1, conv_units]
+            tf.keras.layers.Conv1D(256, activation='relu', kernel_size=self._conv_width),
+            # Shape => [batch, 1,  out_steps*features]
+            tf.keras.layers.Dense(self._out_steps * self._num_features,
+                                  kernel_initializer=tf.initializers.zeros),
+            # Shape => [batch, out_steps, features]
+            tf.keras.layers.Reshape([self._out_steps, self._num_features])])
 
     def _plot_predictions(self, inputs, labels, preds, obj_var):
         plt.figure()

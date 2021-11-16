@@ -23,24 +23,26 @@ if __name__ == '__main__':
     res = []
 
     # Settings
-    out_steps = 5
-    conv_width = 3
-    input_width = 5
+    out_steps = 90
+    conv_width = 6
+    input_width = 10
     ini = 0
-    length = 100
-    max_epochs = 4
+    length = 90
+    max_epochs = 300
     patience = 10
     model_arch = None
+    num_features = dt.shape[1]-1
 
     # model_arch = tf.keras.Sequential([
     #     # Shape [batch, time, features] => [batch, lstm_units]
     #     # Adding more `lstm_units` just overfits more quickly.
-    #     tf.keras.layers.LSTM(32, return_sequences=False),
+    #     tf.keras.layers.LSTM(16, return_sequences=False),
     #     # Shape => [batch, out_steps*features]
-    #     tf.keras.layers.Dense(OUT_STEPS * num_features,
+    #     tf.keras.layers.Dense(out_steps , kernel_initializer=tf.initializers.zeros()),
+    #     tf.keras.layers.Dense(out_steps * num_features,
     #                           kernel_initializer=tf.initializers.zeros()),
     #     # Shape => [batch, out_steps, features]
-    #     tf.keras.layers.Reshape([OUT_STEPS, num_features])
+    #     tf.keras.layers.Reshape([out_steps, num_features])
     # ])
 
     for cv in info['cv']:

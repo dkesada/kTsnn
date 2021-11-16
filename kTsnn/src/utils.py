@@ -117,7 +117,9 @@ def eval_test(model, dt_test, cyc_idx_test, ini, length, obj_var, mean, sd, show
     j = 0
     for i in cyc_idx_test.unique():
         rows = cyc_idx_test == i
+        tmp = time.time()
         res[j] = eval_model(model, dt_test[rows], ini, length, obj_var, mean, sd, show_plot)
+        print("Elapsed forecasting time: {:f} seconds".format(time.time() - tmp))
         j += 1
 
     return res
@@ -175,7 +177,7 @@ def main_pipeline_synth(dt, cv, idx_cyc, obj_var, ini, length, out_steps, conv_w
     # Fit the model
     tmp = time.time()
     model = Conv1dnn(max_epochs, multi_window, num_features, model=model_arch, conv_width=conv_width, out_steps=out_steps)
-    # model = AutoLSTM(MAX_EPOCHS, multi_window, num_features, units=32, out_steps=out_steps)
+    # model = AutoLSTM(max_epochs, multi_window, num_features, units=32, out_steps=out_steps)
     model.train_net()
     model.fit_net(patience=patience)
     print("Elapsed training time: {:f} seconds".format(time.time() - tmp))

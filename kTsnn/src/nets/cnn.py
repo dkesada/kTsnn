@@ -15,14 +15,9 @@ class Conv1dnn(TsNetwork):
             model = self._default_model()
         super().__init__(epochs, window, model)
 
-    def get_input_width(self):
-        return self._window.input_width
-
-    def get_out_steps(self):
-        return self._out_steps
-
     # Define the loss, optimizer and metrics and compile the model
-    def train_net(self, loss=tf.losses.MeanSquaredError(), opt=tf.optimizers.Adam(learning_rate=0.0001,), metrics=[tf.metrics.MeanAbsoluteError()]):
+    def train_net(self, loss=tf.losses.MeanSquaredError(), opt=tf.optimizers.Adam(learning_rate=0.0001,),
+                  metrics=[tf.metrics.MeanAbsoluteError()]):
         self._model.compile(loss=loss, optimizer=opt, metrics=metrics)
 
     # Fit the keras model to the training data and validate the results
