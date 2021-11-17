@@ -176,8 +176,8 @@ def main_pipeline_synth(dt, cv, idx_cyc, obj_var, ini, length, out_steps, conv_w
 
     # Fit the model
     tmp = time.time()
-    model = Conv1dnn(max_epochs, multi_window, num_features, model=model_arch, conv_width=conv_width, out_steps=out_steps)
-    # model = AutoLSTM(max_epochs, multi_window, num_features, units=32, out_steps=out_steps)
+    #model = Conv1dnn(max_epochs, multi_window, num_features, model=model_arch, conv_width=conv_width, out_steps=out_steps)
+    model = AutoLSTM(max_epochs, multi_window, num_features, units=40, out_steps=out_steps)
     model.train_net()
     model.fit_net(patience=patience)
     print("Elapsed training time: {:f} seconds".format(time.time() - tmp))

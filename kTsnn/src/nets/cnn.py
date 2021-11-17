@@ -10,10 +10,9 @@ class Conv1dnn(TsNetwork):
     def __init__(self, epochs, window, num_features, model=None, conv_width=7, out_steps=50):
         self._num_features = num_features
         self._conv_width = conv_width
-        self._out_steps = out_steps
         if model is None:
             model = self._default_model()
-        super().__init__(epochs, window, model)
+        super().__init__(epochs, window, model, out_steps)
 
     # Define the loss, optimizer and metrics and compile the model
     def train_net(self, loss=tf.losses.MeanSquaredError(), opt=tf.optimizers.Adam(learning_rate=0.0001,),
