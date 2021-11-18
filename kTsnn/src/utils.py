@@ -161,7 +161,7 @@ def main_pipeline(dt, cv, idx_cyc, obj_var, ini, length, out_steps, conv_width, 
     return res, model
 
 
-def main_pipeline_synth(dt, cv, idx_cyc, obj_var, ini, length, out_steps, conv_width, input_width,
+def main_pipeline_synth(dt, cv, idx_cyc, obj_var, ini, length, out_steps, units, input_width,
                         max_epochs, patience, model_arch=None, mode=3):
     # Obtain the correspondent cycles from the dataset
     dt_train, dt_test, dt_val, cyc_idx_test = get_train_test_val(dt, cv['test'], cv['val'], idx_cyc)
@@ -177,7 +177,7 @@ def main_pipeline_synth(dt, cv, idx_cyc, obj_var, ini, length, out_steps, conv_w
     # Fit the model
     tmp = time.time()
     #model = Conv1dnn(max_epochs, multi_window, num_features, model=model_arch, conv_width=conv_width, out_steps=out_steps)
-    model = AutoLSTM(max_epochs, multi_window, num_features, units=40, out_steps=out_steps)
+    model = AutoLSTM(max_epochs, multi_window, num_features, model=model_arch, units=units, out_steps=out_steps)
     model.train_net()
     model.fit_net(patience=patience)
     print("Elapsed training time: {:f} seconds".format(time.time() - tmp))
@@ -195,3 +195,6 @@ def main_pipeline_synth(dt, cv, idx_cyc, obj_var, ini, length, out_steps, conv_w
         res = eval_test(model, dt_test, cyc_idx_test, ini, length, obj_var, dt_mean, dt_sd)
 
     return res, model
+
+
+#def main_pipeline_motor_cv():

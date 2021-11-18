@@ -24,7 +24,7 @@ if __name__ == '__main__':
 
     # Settings
     out_steps = 90
-    conv_width = 6
+    units = 32
     input_width = 10
     ini = 0
     length = 90
@@ -33,21 +33,16 @@ if __name__ == '__main__':
     model_arch = None
     num_features = dt.shape[1]-1
 
-    # model_arch = tf.keras.Sequential([
-    #     # Shape [batch, time, features] => [batch, lstm_units]
-    #     # Adding more `lstm_units` just overfits more quickly.
-    #     tf.keras.layers.LSTM(16, return_sequences=False),
-    #     # Shape => [batch, out_steps*features]
-    #     tf.keras.layers.Dense(out_steps , kernel_initializer=tf.initializers.zeros()),
-    #     tf.keras.layers.Dense(out_steps * num_features,
-    #                           kernel_initializer=tf.initializers.zeros()),
-    #     # Shape => [batch, out_steps, features]
-    #     tf.keras.layers.Reshape([out_steps, num_features])
-    # ])
+    model_arch = tf.keras.Sequential([
+            tf.keras.layers.Lambda(lambda x: x[:, -1:, :]),
+            tf.keras.layers.LSTM(units),
+            tf.keras.layers.Dense(out_steps * num_features,
+                                  kernel_initializer=tf.initializers.zeros),
+            tf.keras.layers.Reshape([out_steps, num_features])])
 
     for cv in info['cv']:
         cv_res, _ = main_pipeline_synth(dt, cv, info['idx_cyc'], info['obj_var'], ini, length,
-                                        out_steps, conv_width, input_width, max_epochs, patience, model_arch)
+                                        out_steps, units, input_width, max_epochs, patience, model_arch)
         res.append(cv_res.mean())
 
     print(np.mean(res))

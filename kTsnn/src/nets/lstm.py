@@ -12,18 +12,6 @@ class AutoLSTM(TsNetwork):
         if self._model is None:
             self._model = self._default_model()
 
-
-        # Obsolete?
-        # TsNetwork.__init__(self, epochs, window, None)
-        # tf.keras.Model.__init__(self)
-        # self.out_steps = out_steps
-        # self._num_features = num_features
-        # self.units = units
-        # self.lstm_cell = tf.keras.layers.LSTMCell(units)
-        # # Also wrap the LSTMCell in an RNN to simplify the `warmup` method.
-        # self.lstm_rnn = tf.keras.layers.RNN(self.lstm_cell, return_state=True)
-        # self.dense = tf.keras.layers.Dense(num_features)
-
     # Obsolete?
     def warmup(self, inputs):
         # inputs.shape => (batch, time, features)
@@ -35,7 +23,7 @@ class AutoLSTM(TsNetwork):
         return prediction, state
 
     # Define the loss, optimizer and metrics and compile the model
-    def train_net(self, loss=tf.losses.MeanSquaredError(), opt=tf.optimizers.Adam(learning_rate=0.0001, ),
+    def train_net(self, loss=tf.losses.MeanSquaredError(), opt=tf.optimizers.Adam(learning_rate=0.01,),
                   metrics=[tf.metrics.MeanAbsoluteError()]):
         self._model.compile(loss=loss, optimizer=opt, metrics=metrics)
 
