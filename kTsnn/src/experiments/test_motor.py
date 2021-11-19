@@ -6,8 +6,8 @@ import numpy as np
 
 # Synthetic data experiments
 
-DT_FILE = 'dt_synth_unfolded.csv'
-INFO_FILE = 'exec_info_synth.txt'
+DT_FILE = 'dt_motor_red_unfolded.csv'
+INFO_FILE = 'exec_info_motor.txt'
 
 os.environ['PYTHONHASHSEED'] = '0'
 np.random.seed(42)
