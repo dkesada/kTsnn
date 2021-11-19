@@ -1,5 +1,6 @@
 *.json
 /build/*
 .idea/
-/kTsnn/data/*
+/kTsnn/data/*.csv
+/kTsnn/data/*.h5
 __pycache__/
