@@ -124,6 +124,37 @@ def eval_test(model, dt_test, cyc_idx_test, ini, length, obj_var, mean, sd, show
 
     return res
 
+# Predicts from the initial point to the end of the dataset, taking intervals of 'length'+input size
+def predict_long_term_full(self, dt, ini, obj_var, length, show_plot=True):
+    n_preds = (dt.shape[0] / (self.get_input_width() + length)) // 1
+    res = np.array([zeros(n_preds), zeros(n_preds)])
+    for i in range(n_preds):
+        tmp = time.time()
+        path = self.predict_long_term(dt.iloc[ini:(len(dt)), :], obj_var=obj_var, length=length)
+        print("Elapsed forecasting time: {:f} seconds".format(time.time() - tmp))
+
+    return (res)
+
+# In case we do more than one forecasting per cycle
+def eval_test_rep(model, dt_test, cyc_idx_test, ini, length, obj_var, mean, sd, show_plot=False):
+    res = np.array([np.zeros(len(cyc_idx_test.unique())), np.zeros(len(cyc_idx_test.unique()))])
+    j = 0
+    pad_size = model.get_input_width() + length
+    for i in cyc_idx_test.unique():
+        rows = cyc_idx_test == i
+        n_preds = int(((dt_test[rows].shape[0] - ini) / pad_size) // 1)
+        cyc_res = np.array([np.zeros(n_preds), np.zeros(n_preds)])
+        for k in range(n_preds):
+            tmp = time.time()
+            cyc_res[0][k] = eval_model(model, dt_test[rows], ini + k * pad_size, length, obj_var, mean, sd, show_plot)
+            cyc_res[1][k] = time.time() - tmp
+            print("Elapsed forecasting time: {:f} seconds".format(res[1][j]))
+
+        res[0][j] = cyc_res[0].mean()
+        res[1][j] = cyc_res[1].mean()
+        j += 1
+
+    return res
 
 def main_pipeline(dt, cv, idx_cyc, obj_var, ini, length, out_steps, conv_width, input_width,
                   max_epochs, patience, model_arch=None, mode=3):
@@ -172,15 +203,16 @@ def main_pipeline_synth(dt, cv, idx_cyc, obj_var, ini, length, out_steps, units,
     # Create the temporal window
     multi_window = WindowGenerator(input_width=input_width, label_width=out_steps, shift=out_steps,
                                    dt_train=dt_train, dt_test=dt_test, dt_val=dt_val,
-                                   label_columns=dt_train.columns)  # obj_var
+                                   label_columns=[obj_var])  # obj_var,
 
     # Fit the model
-    tmp = time.time()
+    train_t = time.time()
     #model = Conv1dnn(max_epochs, multi_window, num_features, model=model_arch, conv_width=conv_width, out_steps=out_steps)
     model = AutoLSTM(max_epochs, multi_window, num_features, model=model_arch, units=units, out_steps=out_steps)
     model.train_net()
     model.fit_net(patience=patience)
-    print("Elapsed training time: {:f} seconds".format(time.time() - tmp))
+    train_t = time.time() - train_t
+    print("Elapsed training time: {:f} seconds".format(train_t))
 
     # Forecasting
     if mode == 0:  # Simple prediction of the output
@@ -191,10 +223,11 @@ def main_pipeline_synth(dt, cv, idx_cyc, obj_var, ini, length, out_steps, units,
         res = model.predict_long_term(dt_test.iloc[ini:(len(dt_test)), :], obj_var=obj_var, length=length)
         print("Elapsed forecasting time: {:f} seconds".format(time.time() - tmp))
 
-    else:  # Evaluate the MAE of the model
+    elif mode == 2:  # Evaluate the MAE of the model
         res = eval_test(model, dt_test, cyc_idx_test, ini, length, obj_var, dt_mean, dt_sd)
 
-    return res, model
+    else:
+        res = eval_test_rep(model, dt_test, cyc_idx_test, ini, length, obj_var, dt_mean, dt_sd)
 
+    return [res[0], res[1], train_t], model
 
-#def main_pipeline_motor_cv():

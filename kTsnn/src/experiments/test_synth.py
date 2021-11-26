@@ -22,6 +22,7 @@ if __name__ == '__main__':
     res = []
 
     # Settings
+    # learning_rate=0.01 In the LSTM file
     out_steps = 90
     units = 32
     input_width = 10
@@ -41,7 +42,7 @@ if __name__ == '__main__':
 
     for cv in info['cv']:
         cv_res, _ = main_pipeline_synth(dt, cv, info['idx_cyc'], info['obj_var'], ini, length,
-                                        out_steps, units, input_width, max_epochs, patience, model_arch)
+                                        out_steps, units, input_width, max_epochs, patience, model_arch, mode=2)
         res.append(cv_res.mean())
 
     print(np.mean(res))
