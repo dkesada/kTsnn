@@ -23,14 +23,14 @@ class AutoLSTM(TsNetwork):
         return prediction, state
 
     # Define the loss, optimizer and metrics and compile the model
-    def train_net(self, loss=tf.losses.MeanSquaredError(), opt=tf.optimizers.Adam(learning_rate=0.0001,),
+    def train_net(self, loss=tf.losses.MeanSquaredError(), opt=tf.optimizers.Adam(learning_rate=0.001),
                   metrics=[tf.metrics.MeanAbsoluteError()]):
         self._model.compile(loss=loss, optimizer=opt, metrics=metrics)
 
     # Fit the keras model to the training data and validate the results
     def fit_net(self, patience=5, show_plot=True):
         if patience is not None:
-            early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss',patience=patience,mode='min')
+            early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss',patience=patience, mode='min')
             log = self._model.fit(self._window.train, epochs=self._epochs, validation_data=self._window.val,
                                   callbacks=[early_stopping])
         else:
@@ -58,6 +58,24 @@ class AutoLSTM(TsNetwork):
 
         return preds
 
+    def predict_single_shot(self, dt, obj_var, length, show_plot=True):
+        if len(dt) < self._window.input_width:
+            raise ValueError(f'At least {self._window.input_width} previous instants have to be provided')
+
+        dt_ini = dt.iloc[0:self._window.input_width, :]
+        dt_empty = DataFrame(None, index=range(self._window.label_width), columns=dt_ini.columns)
+        dt_ini = dt_ini.append(dt_empty)
+
+        prep_dt = self._window.make_dataset(dt_ini)
+        inputs, labels = next(iter(prep_dt))
+        preds = self._model.predict(inputs)
+        path = preds[0, :]
+
+        if show_plot:
+            self._plot_predictions_long_term(dt, path, obj_var, length)
+
+        return path[:, self._window.label_columns_indices.get(obj_var)]
+
     def predict_long_term(self, dt, obj_var, length, show_plot=True):
         if len(dt) < self._window.input_width:
             raise ValueError(f'At least {self._window.input_width} previous instants have to be provided')
@@ -73,6 +91,17 @@ class AutoLSTM(TsNetwork):
             inputs, labels = next(iter(prep_dt))
             preds = self._model.predict(inputs)
             path = append(path, preds[0, :, :], axis=0)
+            if self._window.label_width > self._window.input_width:
+                dt_ini.iloc[0:self._window.input_width, :] = \
+                    preds[0, range(self._window.label_width - self._window.input_width,
+                                   self._window.label_width), :]  # Move the predictions as evidence
+            elif self._window.label_width < self._window.input_width:
+                dt_ini.iloc[0:self._window.input_width-self._window.label_width, :] = \
+                    dt_ini.iloc[self._window.input_width - self._window.label_width:self._window.input_width, :]
+                dt_ini.iloc[self._window.input_width - self._window.label_width:self._window.input_width, :] = preds[0, :, :]
+            else:
+                dt_ini.iloc[0:self._window.input_width, :] = preds[0, :, :]
+
             dt_ini.iloc[0:self._window.input_width, :] = \
                 preds[0, range(self._window.label_width - self._window.input_width,
                                self._window.label_width), :]  # Move the predictions as evidence
@@ -81,6 +110,9 @@ class AutoLSTM(TsNetwork):
             self._plot_predictions_long_term(dt, path, obj_var, length)
 
         return path
+
+    def del_model(self):
+        self._model = None
 
     def _default_model(self):
         return tf.keras.Sequential([
@@ -110,10 +142,10 @@ class AutoLSTM(TsNetwork):
         initial_line, = plt.plot(range(self._window.input_width),
                                  dt[obj_var][0:self._window.input_width], label='Initial values')
         real_line, = plt.plot(range(self._window.input_width - 1, length + self._window.input_width - 1),
-                              dt[obj_var][range(self._window.input_width, length+self._window.input_width)], label='Real values')
-        pred_line, = plt.plot(range(self._window.input_width - 1, length),
-                              path[range(self._window.input_width-1, length),
-                                   self._window.label_columns_indices.get(obj_var)],label='Predicted values')
+                              dt[obj_var][self._window.input_width:(length + self._window.input_width)],
+                              label='Real values')
+        pred_line, = plt.plot(range(self._window.input_width - 1, length + self._window.input_width - 1),
+                              path[0:length, self._window.label_columns_indices.get(obj_var)], label='Predicted values')
         plt.legend(handles=[initial_line, real_line, pred_line])
         plt.ylabel(obj_var)
         plt.xlabel('Time (h)')

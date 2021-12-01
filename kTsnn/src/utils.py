@@ -8,7 +8,6 @@ from kTsnn.src.nets.cnn import Conv1dnn
 from kTsnn.src.nets.lstm import AutoLSTM
 from kTsnn.src.nets.window_gen import WindowGenerator
 
-
 # Line plot of a column in a dataframe
 def plot_col(dt, col):
     plt.figure()
@@ -102,10 +101,19 @@ def eval_pred(orig, pred, mean, sd):
     return res
 
 
+def eval_model_single(model, dt_test, ini, length, obj_var, mean, sd, show_plot=False):
+    orig = dt_test[obj_var]
+    path = model.predict_single_shot(dt_test.iloc[ini:(ini+length+model.get_input_width()), :],
+                                   obj_var=obj_var, length=length, show_plot=show_plot)
+    res = eval_pred(orig, path, mean, sd)
+
+    return res
+
+
 def eval_model(model, dt_test, ini, length, obj_var, mean, sd, show_plot=False):
     obj_idx = dt_test.columns.get_loc(obj_var)
     orig = dt_test[obj_var]
-    path = model.predict_long_term(dt_test.iloc[ini:(ini+length), :],
+    path = model.predict_long_term(dt_test.iloc[ini:((ini+length+model.get_input_width())), :],
                                    obj_var=obj_var, length=length, show_plot=show_plot)
     res = eval_pred(orig, path[:, obj_idx], mean, sd)
 
@@ -124,19 +132,21 @@ def eval_test(model, dt_test, cyc_idx_test, ini, length, obj_var, mean, sd, show
 
     return res
 
+
 # Predicts from the initial point to the end of the dataset, taking intervals of 'length'+input size
 def predict_long_term_full(self, dt, ini, obj_var, length, show_plot=True):
     n_preds = (dt.shape[0] / (self.get_input_width() + length)) // 1
-    res = np.array([zeros(n_preds), zeros(n_preds)])
+    res = np.array([np.zeros(n_preds), np.zeros(n_preds)])
     for i in range(n_preds):
         tmp = time.time()
         path = self.predict_long_term(dt.iloc[ini:(len(dt)), :], obj_var=obj_var, length=length)
         print("Elapsed forecasting time: {:f} seconds".format(time.time() - tmp))
 
-    return (res)
+    return res
+
 
 # In case we do more than one forecasting per cycle
-def eval_test_rep(model, dt_test, cyc_idx_test, ini, length, obj_var, mean, sd, show_plot=False):
+def eval_test_rep(model, dt_test, cyc_idx_test, ini, length, obj_var, mean, sd, show_plot=False, single=False):
     res = np.array([np.zeros(len(cyc_idx_test.unique())), np.zeros(len(cyc_idx_test.unique()))])
     j = 0
     pad_size = model.get_input_width() + length
@@ -146,7 +156,12 @@ def eval_test_rep(model, dt_test, cyc_idx_test, ini, length, obj_var, mean, sd, 
         cyc_res = np.array([np.zeros(n_preds), np.zeros(n_preds)])
         for k in range(n_preds):
             tmp = time.time()
-            cyc_res[0][k] = eval_model(model, dt_test[rows], ini + k * pad_size, length, obj_var, mean, sd, show_plot)
+            if single:
+                cyc_res[0][k] = eval_model_single(model, dt_test[rows], ini + k * pad_size,
+                                                  length, obj_var, mean, sd, show_plot)
+            else:
+                cyc_res[0][k] = eval_model(model, dt_test[rows], ini + k * pad_size,
+                                                  length, obj_var, mean, sd, show_plot)
             cyc_res[1][k] = time.time() - tmp
             print("Elapsed forecasting time: {:f} seconds".format(res[1][j]))
 
@@ -155,6 +170,7 @@ def eval_test_rep(model, dt_test, cyc_idx_test, ini, length, obj_var, mean, sd, 
         j += 1
 
     return res
+
 
 def main_pipeline(dt, cv, idx_cyc, obj_var, ini, length, out_steps, conv_width, input_width,
                   max_epochs, patience, model_arch=None, mode=3):
@@ -193,12 +209,18 @@ def main_pipeline(dt, cv, idx_cyc, obj_var, ini, length, out_steps, conv_width, 
 
 
 def main_pipeline_synth(dt, cv, idx_cyc, obj_var, ini, length, out_steps, units, input_width,
-                        max_epochs, patience, model_arch=None, mode=3):
+                        num_features, max_epochs, patience, model_arch=None, mode=3, single=False):
     # Obtain the correspondent cycles from the dataset
     dt_train, dt_test, dt_val, cyc_idx_test = get_train_test_val(dt, cv['test'], cv['val'], idx_cyc)
+    #cyc_idx_test = cyc_idx_test[1:]
+    #dt_train = dt_train.diff(1)[1:]
+    #dt_test = dt_test.diff(1)[1:]
+    #dt_val = dt_val.diff(1)[1:]
     dt_train, dt_test, dt_val, dt_mean, dt_sd = norm_dt(dt_train, dt_test, dt_val, obj_var)
 
-    num_features = dt_train.shape[1]
+
+
+    #num_features = dt_train.shape[1]
 
     # Create the temporal window
     multi_window = WindowGenerator(input_width=input_width, label_width=out_steps, shift=out_steps,
@@ -207,7 +229,7 @@ def main_pipeline_synth(dt, cv, idx_cyc, obj_var, ini, length, out_steps, units,
 
     # Fit the model
     train_t = time.time()
-    #model = Conv1dnn(max_epochs, multi_window, num_features, model=model_arch, conv_width=conv_width, out_steps=out_steps)
+    #model = Conv1dnn(max_epochs, multi_window, num_features, model=model_arch, conv_width=units, out_steps=out_steps)
     model = AutoLSTM(max_epochs, multi_window, num_features, model=model_arch, units=units, out_steps=out_steps)
     model.train_net()
     model.fit_net(patience=patience)
@@ -227,7 +249,8 @@ def main_pipeline_synth(dt, cv, idx_cyc, obj_var, ini, length, out_steps, units,
         res = eval_test(model, dt_test, cyc_idx_test, ini, length, obj_var, dt_mean, dt_sd)
 
     else:
-        res = eval_test_rep(model, dt_test, cyc_idx_test, ini, length, obj_var, dt_mean, dt_sd)
+        res = eval_test_rep(model, dt_test, cyc_idx_test, ini, length, obj_var, dt_mean, dt_sd,
+                            show_plot=True, single=single)
 
     return [res[0], res[1], train_t], model
 

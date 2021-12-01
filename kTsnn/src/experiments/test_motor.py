@@ -22,26 +22,42 @@ if __name__ == '__main__':
     res = [[], [], []]
 
     # Settings
-    out_steps = 20
-    units = 32
-    input_width = 3
+    out_steps = 1
+    units = 8
+    input_width = 2
     ini = 0
     length = 20
-    max_epochs = 300
+    max_epochs = 200
     patience = 10
     model_arch = None
-    num_features = dt.shape[1]-1
+    num_features = 11
 
     model_arch = tf.keras.Sequential([
             #tf.keras.layers.Lambda(lambda x: x[:, -1:, :]),
             tf.keras.layers.LSTM(units, return_sequences=False),
+            #tf.keras.layers.Dense(36,
+            #                      kernel_initializer=tf.initializers.zeros),
             tf.keras.layers.Dense(out_steps * num_features,
                                   kernel_initializer=tf.initializers.zeros),
             tf.keras.layers.Reshape([out_steps, num_features])])
 
+    # model_arch = tf.keras.Sequential([
+    #                 # Shape [batch, time, features] => [batch, CONV_WIDTH, features]
+    #                 tf.keras.layers.Lambda(lambda x: x[:, -units:, :]),
+    #                 # Shape => [batch, 1, conv_units]
+    #                 tf.keras.layers.Conv1D(256, activation='relu', kernel_size=units),
+    #                 # Shape => [batch, 1,  out_steps*features]
+    #                 tf.keras.layers.Dense(out_steps * num_features,
+    #                                       kernel_initializer=tf.initializers.zeros),
+    #                 # Shape => [batch, out_steps, features]
+    #                 tf.keras.layers.Reshape([out_steps, num_features])])
+    info["cv"] = info["cv"][1:2]
+    info["cv"][0]["test"] = [13]
+
     for cv in info['cv']:
         cv_res, _ = main_pipeline_synth(dt, cv, info['idx_cyc'], info['obj_var'], ini, length,
-                                        out_steps, units, input_width, max_epochs, patience, model_arch, mode=1)
+                                        out_steps, units, input_width, num_features, max_epochs, patience, model_arch,
+                                        mode=3, single=False)
         res[0].append(cv_res[0].mean())
         res[1].append(cv_res[1].mean())
         res[2].append(cv_res[2])
@@ -52,17 +68,4 @@ if __name__ == '__main__':
     print(np.mean(res[1]))
     print("Final training time of the model: ")
     print(np.mean(res[2]))
-
-
-
-
-
-
-
-
-
-
-
-
-
 
