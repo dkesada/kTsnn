@@ -3,6 +3,7 @@ import tensorflow as tf
 import os
 import random as rn
 import numpy as np
+from kTsnn.src.nets.lstm_rec import LSTM_rec
 
 # Synthetic data experiments
 
@@ -22,12 +23,12 @@ if __name__ == '__main__':
     res = [[], [], []]
 
     # Settings
-    out_steps = 1
+    out_steps = 5
     units = 8
     input_width = 2
     ini = 0
-    length = 20
-    max_epochs = 200
+    length = 5
+    max_epochs = 300
     patience = 10
     model_arch = None
     num_features = 11
@@ -51,8 +52,11 @@ if __name__ == '__main__':
     #                                       kernel_initializer=tf.initializers.zeros),
     #                 # Shape => [batch, out_steps, features]
     #                 tf.keras.layers.Reshape([out_steps, num_features])])
-    info["cv"] = info["cv"][1:2]
-    info["cv"][0]["test"] = [13]
+
+    #model_arch = LSTM_rec(units, out_steps, num_features)
+
+    #info["cv"] = info["cv"][1:2]
+    #info["cv"][0]["test"] = [13]
 
     for cv in info['cv']:
         cv_res, _ = main_pipeline_synth(dt, cv, info['idx_cyc'], info['obj_var'], ini, length,

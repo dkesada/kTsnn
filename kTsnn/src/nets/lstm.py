@@ -12,16 +12,6 @@ class AutoLSTM(TsNetwork):
         if self._model is None:
             self._model = self._default_model()
 
-    # Obsolete?
-    def warmup(self, inputs):
-        # inputs.shape => (batch, time, features)
-        # x.shape => (batch, lstm_units)
-        x, *state = self.lstm_rnn(inputs)
-
-        # predictions.shape => (batch, features)
-        prediction = self.dense(x)
-        return prediction, state
-
     # Define the loss, optimizer and metrics and compile the model
     def train_net(self, loss=tf.losses.MeanSquaredError(), opt=tf.optimizers.Adam(learning_rate=0.001),
                   metrics=[tf.metrics.MeanAbsoluteError()]):

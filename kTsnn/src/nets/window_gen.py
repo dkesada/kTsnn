@@ -95,7 +95,7 @@ class WindowGenerator:
             sequence_length=self.total_window_size,
             sequence_stride=1,
             shuffle=True,
-            batch_size=60, )
+            batch_size=20, )
 
         ds = ds.map(self.split_window)
 

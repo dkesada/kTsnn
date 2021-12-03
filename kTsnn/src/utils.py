@@ -80,6 +80,18 @@ def norm_dt(dt_train, dt_test, dt_val, obj_var):
     return dt_train, dt_test, dt_val, dt_mean, dt_sd
 
 
+def norm_dt_min_max(dt_train, dt_test, dt_val, obj_var):
+    dt_min = dt_train.min()
+    dt_max = dt_train.max()
+    dt_train = (dt_train - dt_min) / (dt_max - dt_min)
+    dt_test = (dt_test - dt_min) / (dt_max - dt_min)
+    dt_val = (dt_val - dt_min) / (dt_max - dt_min)
+    dt_min = dt_min[dt_train.columns.get_loc(obj_var)]
+    dt_max = dt_max[dt_train.columns.get_loc(obj_var)]
+
+    return dt_train, dt_test, dt_val, dt_min, dt_max
+
+
 def mae(orig, pred):
     tmp = pred - orig
     tmp = np.abs(tmp)
@@ -90,11 +102,17 @@ def undo_norm(ts, mean, sd):
     return ts * sd + mean
 
 
+def undo_norm_min_max(ts, min, max):
+    return ts * (max - min) + min
+
+
 def eval_pred(orig, pred, mean, sd):
     if(len(orig) > len(pred)):
         orig = orig[0:len(pred)]
-    orig_un = undo_norm(orig, mean, sd)
-    pred_un = undo_norm(pred, mean, sd)
+    # orig_un = undo_norm(orig, mean, sd)
+    # pred_un = undo_norm(pred, mean, sd)
+    orig_un = undo_norm_min_max(orig, mean, sd)
+    pred_un = undo_norm_min_max(pred, mean, sd)
     res = mae(orig_un, pred_un)
     print("MAE: {:f}".format(res))
 
@@ -212,12 +230,12 @@ def main_pipeline_synth(dt, cv, idx_cyc, obj_var, ini, length, out_steps, units,
                         num_features, max_epochs, patience, model_arch=None, mode=3, single=False):
     # Obtain the correspondent cycles from the dataset
     dt_train, dt_test, dt_val, cyc_idx_test = get_train_test_val(dt, cv['test'], cv['val'], idx_cyc)
-    #cyc_idx_test = cyc_idx_test[1:]
-    #dt_train = dt_train.diff(1)[1:]
-    #dt_test = dt_test.diff(1)[1:]
-    #dt_val = dt_val.diff(1)[1:]
-    dt_train, dt_test, dt_val, dt_mean, dt_sd = norm_dt(dt_train, dt_test, dt_val, obj_var)
-
+    # cyc_idx_test = cyc_idx_test[1:]
+    # dt_train = dt_train.diff(1)[1:]
+    # dt_test = dt_test.diff(1)[1:]
+    # dt_val = dt_val.diff(1)[1:]
+    #dt_train, dt_test, dt_val, dt_mean, dt_sd = norm_dt(dt_train, dt_test, dt_val, obj_var)
+    dt_train, dt_test, dt_val, dt_mean, dt_sd = norm_dt_min_max(dt_train, dt_test, dt_val, obj_var)
 
 
     #num_features = dt_train.shape[1]
@@ -250,7 +268,7 @@ def main_pipeline_synth(dt, cv, idx_cyc, obj_var, ini, length, out_steps, units,
 
     else:
         res = eval_test_rep(model, dt_test, cyc_idx_test, ini, length, obj_var, dt_mean, dt_sd,
-                            show_plot=True, single=single)
+                            show_plot=False, single=single)
 
     return [res[0], res[1], train_t], model
 
