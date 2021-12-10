@@ -29,7 +29,7 @@ if __name__ == '__main__':
     res = [[], [], []]
 
     # Settings
-    out_steps = 10
+    out_steps = 1
     units = 128
     input_width = 2
     ini = 0
