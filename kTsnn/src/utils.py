@@ -7,6 +7,7 @@ import time
 from kTsnn.src.nets.cnn import Conv1dnn
 from kTsnn.src.nets.lstm import AutoLSTM
 from kTsnn.src.nets.window_gen import WindowGenerator
+from kTsnn.src.nets.lstm_rec import LSTM_rec
 import multitasking
 
 # Line plot of a column in a dataframe
@@ -241,13 +242,12 @@ def main_pipeline_synth(dt, cv, idx_cyc, obj_var, ini, length, out_steps, units,
     # dt_val = dt_val.diff(1)[1:]
     #dt_train, dt_test, dt_val, dt_mean, dt_sd = norm_dt(dt_train, dt_test, dt_val, obj_var)
     dt_train, dt_test, dt_val, dt_mean, dt_sd = norm_dt_min_max(dt_train, dt_test, dt_val, obj_var)
+
     model_arch = tf.keras.Sequential([
-        # tf.keras.layers.Lambda(lambda x: x[:, -1:, :]),
-        tf.keras.layers.LSTM(units, return_sequences=False),
-        # tf.keras.layers.Dense(36,
-        #                      kernel_initializer=tf.initializers.zeros),
+        tf.keras.layers.LSTM(units, return_sequences=False, recurrent_activation="relu"),
+        tf.keras.layers.Dropout(0.15),
         tf.keras.layers.Dense(out_steps * num_features,
-                              kernel_initializer=tf.initializers.zeros),
+                              kernel_initializer=tf.initializers.zeros, activation="linear"),
         tf.keras.layers.Reshape([out_steps, num_features])])
 
     #num_features = dt_train.shape[1]

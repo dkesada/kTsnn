@@ -13,7 +13,7 @@ class AutoLSTM(TsNetwork):
             self._model = self._default_model()
 
     # Define the loss, optimizer and metrics and compile the model
-    def train_net(self, loss=tf.losses.MeanSquaredError(), opt=tf.optimizers.Adam(learning_rate=0.001),
+    def train_net(self, loss=tf.losses.MeanSquaredError(), opt=tf.optimizers.Adam(learning_rate=0.0001),
                   metrics=[tf.metrics.MeanAbsoluteError()]):
         self._model.compile(loss=loss, optimizer=opt, metrics=metrics)
 

@@ -30,7 +30,7 @@ if __name__ == '__main__':
 
     # Settings
     out_steps = 10
-    units = 8
+    units = 128
     input_width = 2
     ini = 0
     length = 20
