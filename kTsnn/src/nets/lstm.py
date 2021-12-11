@@ -86,11 +86,14 @@ class AutoLSTM(TsNetwork):
                     preds[0, range(self._window.label_width - self._window.input_width,
                                    self._window.label_width), :]  # Move the predictions as evidence
             elif self._window.label_width < self._window.input_width:
-                dt_ini.iloc[0:self._window.input_width-self._window.label_width, :] = \
-                    dt_ini.iloc[self._window.input_width - self._window.label_width:self._window.input_width, :]
+                dt_ini = dt_ini.shift(-self._window.label_width)
                 dt_ini.iloc[self._window.input_width - self._window.label_width:self._window.input_width, :] = preds[0, :, :]
             else:
                 dt_ini.iloc[0:self._window.input_width, :] = preds[0, :, :]
+
+            # dt_ini.iloc[0:self._window.input_width, :] = \
+            #     preds[0, range(self._window.label_width - self._window.input_width,
+            #                    self._window.label_width), :]  # Move the predictions as evidence
 
         if show_plot:
             self._plot_predictions_long_term(dt, path, obj_var, length)

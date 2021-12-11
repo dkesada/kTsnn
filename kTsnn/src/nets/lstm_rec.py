@@ -6,7 +6,7 @@ class LSTM_rec(tf.keras.Model):
         super().__init__()
         self.out_steps = out_steps
         self.units = units
-        self.lstm_cell = tf.keras.layers.LSTMCell(units, recurrent_activation='sigmoid')
+        self.lstm_cell = tf.keras.layers.LSTMCell(units, recurrent_activation='relu')
         # Also wrap the LSTMCell in an RNN to simplify the `warmup` method.
         self.lstm_rnn = tf.keras.layers.RNN(self.lstm_cell, return_state=True)
         self.dense = tf.keras.layers.Dense(num_features)
