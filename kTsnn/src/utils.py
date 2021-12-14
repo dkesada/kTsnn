@@ -243,21 +243,21 @@ def main_pipeline_synth(dt, cv, idx_cyc, obj_var, ini, length, out_steps, units,
     #dt_train, dt_test, dt_val, dt_mean, dt_sd = norm_dt(dt_train, dt_test, dt_val, obj_var)
     dt_train, dt_test, dt_val, dt_mean, dt_sd = norm_dt_min_max(dt_train, dt_test, dt_val, obj_var)
 
-    # model_arch = tf.keras.Sequential([
-    #     tf.keras.layers.LSTM(units, return_sequences=False, recurrent_activation="relu"),
-    #     tf.keras.layers.Dropout(0.15),
-    #     tf.keras.layers.Dense(out_steps * num_features,
-    #                           kernel_initializer=tf.initializers.zeros, activation="linear"),
-    #     tf.keras.layers.Reshape([out_steps, num_features])])
+    model_arch = tf.keras.Sequential([
+        tf.keras.layers.LSTM(units, return_sequences=False),
+        tf.keras.layers.Dropout(0.1),
+        tf.keras.layers.Dense(out_steps * num_features,
+                              kernel_initializer=tf.initializers.zeros, activation="linear"),
+        tf.keras.layers.Reshape([out_steps, num_features])])
 
-    model_arch = LSTM_rec(units, out_steps, num_features)
+    # model_arch = LSTM_rec(units, out_steps, num_features)
 
     #num_features = dt_train.shape[1]
 
     # Create the temporal window
     multi_window = WindowGenerator(input_width=input_width, label_width=out_steps, shift=out_steps,
-                                   dt_train=dt_train, dt_test=dt_test, dt_val=dt_val)
-                                   #label_columns=[obj_var])
+                                   dt_train=dt_train, dt_test=dt_test, dt_val=dt_val,
+                                   label_columns=[obj_var])
 
     # Fit the model
     train_t = time.time()

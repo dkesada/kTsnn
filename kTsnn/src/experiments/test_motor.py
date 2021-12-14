@@ -29,8 +29,8 @@ if __name__ == '__main__':
     res = [[], [], []]
 
     # Settings
-    out_steps = 1
-    units = 128
+    out_steps = 20
+    units = 64
     input_width = 2
     ini = 0
     length = 20
