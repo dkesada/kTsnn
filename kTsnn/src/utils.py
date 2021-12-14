@@ -132,7 +132,7 @@ def eval_model_single(model, dt_test, ini, length, obj_var, mean, sd, show_plot=
 
 def eval_model(model, dt_test, ini, length, obj_var, mean, sd, show_plot=False):
     obj_idx = dt_test.columns.get_loc(obj_var)
-    orig = dt_test[obj_var]
+    orig = dt_test[obj_var][ini:((ini+length+model.get_input_width()))]
     path = model.predict_long_term(dt_test.iloc[ini:((ini+length+model.get_input_width())), :],
                                    obj_var=obj_var, length=length, show_plot=show_plot)
     res = eval_pred(orig, path[:, obj_idx], mean, sd)
@@ -181,7 +181,7 @@ def eval_test_rep(model, dt_test, cyc_idx_test, ini, length, obj_var, mean, sd, 
                                                   length, obj_var, mean, sd, show_plot)
             else:
                 cyc_res[0][k] = eval_model(model, dt_test[rows], ini + k * pad_size,
-                                                  length, obj_var, mean, sd, show_plot)
+                                           length, obj_var, mean, sd, show_plot)
             cyc_res[1][k] = time.time() - tmp
             print("Elapsed forecasting time: {:f} seconds".format(res[1][j]))
 

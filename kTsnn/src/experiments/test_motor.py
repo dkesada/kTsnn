@@ -68,7 +68,7 @@ if __name__ == '__main__':
         queue_cv = Queue()
         main_pipeline_synth(dt, cv, info['idx_cyc'], info['obj_var'], ini, length,
                             out_steps, units, input_width, num_features, max_epochs, patience, model_arch,
-                            mode=2, single=False, queue=queue_cv)
+                            mode=3, single=False, queue=queue_cv)
         cv_res = queue_cv.get()
         res[0].append(cv_res[0].mean())
         res[1].append(cv_res[1].mean())
