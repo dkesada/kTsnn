@@ -30,14 +30,14 @@ if __name__ == '__main__':
 
     # Settings
     out_steps = 20
-    units = 64
+    units = 128
     input_width = 2
     ini = 0
     length = 20
     max_epochs = 300
     patience = 10
     model_arch = None
-    num_features = 11
+    num_features = 1
 
     # model_arch = tf.keras.Sequential([
     #         #tf.keras.layers.Lambda(lambda x: x[:, -1:, :]),

@@ -131,7 +131,9 @@ def eval_model_single(model, dt_test, ini, length, obj_var, mean, sd, show_plot=
 
 
 def eval_model(model, dt_test, ini, length, obj_var, mean, sd, show_plot=False):
-    obj_idx = dt_test.columns.get_loc(obj_var)
+    obj_idx = 0
+    if model.get_num_labels() != 1:
+        obj_idx = dt_test.columns.get_loc(obj_var)
     orig = dt_test[obj_var][ini:((ini+length+model.get_input_width()))]
     path = model.predict_long_term(dt_test.iloc[ini:((ini+length+model.get_input_width())), :],
                                    obj_var=obj_var, length=length, show_plot=show_plot)
@@ -244,8 +246,11 @@ def main_pipeline_synth(dt, cv, idx_cyc, obj_var, ini, length, out_steps, units,
     dt_train, dt_test, dt_val, dt_mean, dt_sd = norm_dt_min_max(dt_train, dt_test, dt_val, obj_var)
 
     model_arch = tf.keras.Sequential([
-        tf.keras.layers.LSTM(units, return_sequences=False),
-        tf.keras.layers.Dropout(0.1),
+        tf.keras.layers.LSTM(units, return_sequences=False, #activation="swish",
+                             kernel_initializer=tf.initializers.RandomUniform(minval=-0.1, maxval=0.1)),
+        #tf.keras.layers.Dropout(0.1),
+        #tf.keras.layers.Dense(10),
+        #tf.keras.layers.Dense(10),
         tf.keras.layers.Dense(out_steps * num_features,
                               kernel_initializer=tf.initializers.zeros, activation="linear"),
         tf.keras.layers.Reshape([out_steps, num_features])])

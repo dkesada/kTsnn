@@ -39,6 +39,9 @@ class TsNetwork(ABC):
     def get_input_width(self):
         return self._window.input_width
 
+    def get_num_labels(self):
+        return len(self._window.label_columns)
+
     def get_out_steps(self):
         return self._out_steps
 
