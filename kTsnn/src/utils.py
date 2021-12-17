@@ -137,7 +137,7 @@ def eval_model(model, dt_test, ini, length, obj_var, mean, sd, show_plot=False):
     orig = dt_test[obj_var][ini:((ini+length+model.get_input_width()))]
     path = model.predict_long_term(dt_test.iloc[ini:((ini+length+model.get_input_width())), :],
                                    obj_var=obj_var, length=length, show_plot=show_plot)
-    res = eval_pred(orig, path[:, obj_idx], mean, sd)
+    res = eval_pred(orig, path[0:len(orig), obj_idx], mean, sd)
 
     return res
 
@@ -174,7 +174,9 @@ def eval_test_rep(model, dt_test, cyc_idx_test, ini, length, obj_var, mean, sd, 
     pad_size = model.get_input_width() + length
     for i in cyc_idx_test.unique():
         rows = cyc_idx_test == i
-        n_preds = int(((dt_test[rows].shape[0] - ini) / pad_size) // 1)
+        n_preds = int((((dt_test[rows].shape[0] - ini) / pad_size)+1) // 1)
+        if (pad_size - ((ini+n_preds*pad_size) % dt_test[rows].shape[0])) < model.get_input_width():  # Not enough inputs for last pred
+            n_preds = n_preds - 1
         cyc_res = np.array([np.zeros(n_preds), np.zeros(n_preds)])
         for k in range(n_preds):
             tmp = time.time()
