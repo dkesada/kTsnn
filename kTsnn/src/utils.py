@@ -174,9 +174,7 @@ def eval_test_rep(model, dt_test, cyc_idx_test, ini, length, obj_var, mean, sd, 
     pad_size = model.get_input_width() + length
     for i in cyc_idx_test.unique():
         rows = cyc_idx_test == i
-        n_preds = int((((dt_test[rows].shape[0] - ini) / pad_size)+1) // 1)
-        if (pad_size - ((ini+n_preds*pad_size) % dt_test[rows].shape[0])) < model.get_input_width():  # Not enough inputs for last pred
-            n_preds = n_preds - 1
+        n_preds = (dt_test[rows].shape[0] - ini) // pad_size
         cyc_res = np.array([np.zeros(n_preds), np.zeros(n_preds)])
         for k in range(n_preds):
             tmp = time.time()
@@ -187,7 +185,7 @@ def eval_test_rep(model, dt_test, cyc_idx_test, ini, length, obj_var, mean, sd, 
                 cyc_res[0][k] = eval_model(model, dt_test[rows], ini + k * pad_size,
                                            length, obj_var, mean, sd, show_plot)
             cyc_res[1][k] = time.time() - tmp
-            print("Elapsed forecasting time: {:f} seconds".format(res[1][j]))
+            print("Elapsed forecasting time: {:f} seconds".format(cyc_res[1][k]))
 
         res[0][j] = cyc_res[0].mean()
         res[1][j] = cyc_res[1].mean()

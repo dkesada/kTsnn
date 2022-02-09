@@ -3,6 +3,9 @@ import tensorflow as tf
 import os
 import random as rn
 import numpy as np
+from multiprocessing import Process, Queue
+import multitasking
+import signal
 
 # Synthetic data experiments
 
@@ -17,35 +20,52 @@ tf.random.set_seed(424242)
 
 
 if __name__ == '__main__':
+    multitasking.set_engine("process")
+    multitasking.set_max_threads(1)
+    signal.signal(signal.SIGINT, multitasking.killall)
+
     dt = load_dt(DT_FILE)
     info = load_info(INFO_FILE)
-    res = []
+    res = [[], [], []]
 
     # Settings
     # learning_rate=0.01 In the LSTM file
-    out_steps = 90
-    units = 32
-    input_width = 10
+    out_steps = 100
+    units = 128
+    input_width = 1
     ini = 0
     length = 90
-    max_epochs = 300
+    max_epochs = 100
     patience = 10
     model_arch = None
-    num_features = dt.shape[1]-1
+    num_features = 1
 
-    model_arch = tf.keras.Sequential([
-            tf.keras.layers.Lambda(lambda x: x[:, -1:, :]),
-            tf.keras.layers.LSTM(units),
-            tf.keras.layers.Dense(out_steps * num_features,
-                                  kernel_initializer=tf.initializers.zeros),
-            tf.keras.layers.Reshape([out_steps, num_features])])
+    # model_arch = tf.keras.Sequential([
+    #         tf.keras.layers.Lambda(lambda x: x[:, -1:, :]),
+    #         tf.keras.layers.LSTM(units),
+    #         tf.keras.layers.Dense(out_steps * num_features,
+    #                               kernel_initializer=tf.initializers.zeros),
+    #         tf.keras.layers.Reshape([out_steps, num_features])])
+
+    # info["cv"] = info["cv"][1:2]
+    # info["cv"][0]["test"] = [13]
 
     for cv in info['cv']:
-        cv_res, _ = main_pipeline_synth(dt, cv, info['idx_cyc'], info['obj_var'], ini, length,
-                                        out_steps, units, input_width, max_epochs, patience, model_arch, mode=2)
-        res.append(cv_res.mean())
+        queue_cv = Queue()
+        main_pipeline_synth(dt, cv, info['idx_cyc'], info['obj_var'], ini, length,
+                            out_steps, units, input_width, num_features, max_epochs, patience, model_arch,
+                            mode=3, single=False, queue=queue_cv)
+        cv_res = queue_cv.get()
+        res[0].append(cv_res[0].mean())
+        res[1].append(cv_res[1].mean())
+        res[2].append(cv_res[2])
 
-    print(np.mean(res))
+    print("Final MAE of the model: ")
+    print(np.mean(res[0]))
+    print("Final exec. time of the model: ")
+    print(np.mean(res[1]))
+    print("Final training time of the model: ")
+    print(np.mean(res[2]))
 
 
 
