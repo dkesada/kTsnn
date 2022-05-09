@@ -26,7 +26,7 @@ if __name__ == '__main__':
 
     dt = load_dt(DT_FILE)
     info = load_info(INFO_FILE)
-    res = [[], [], []]
+    res = [[], [], [], []]
 
     # Settings
     out_steps = 20
@@ -72,7 +72,8 @@ if __name__ == '__main__':
         cv_res = queue_cv.get()
         res[0].append(cv_res[0].mean())
         res[1].append(cv_res[1].mean())
-        res[2].append(cv_res[2])
+        res[2].append(cv_res[2].mean())
+        res[3].append(cv_res[3])
 
     # for cv in info['cv']:
     #     cv_res, _ = main_pipeline_synth(dt, cv, info['idx_cyc'], info['obj_var'], ini, length,
@@ -84,8 +85,10 @@ if __name__ == '__main__':
 
     print("Final MAE of the model: ")
     print(np.mean(res[0]))
-    print("Final exec. time of the model: ")
+    print("Final MAPE of the model: ")
     print(np.mean(res[1]))
-    print("Final training time of the model: ")
+    print("Final exec. time of the model: ")
     print(np.mean(res[2]))
+    print("Final training time of the model: ")
+    print(np.mean(res[3]))
 

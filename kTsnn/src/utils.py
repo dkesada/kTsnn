@@ -100,6 +100,12 @@ def mae(orig, pred):
     return tmp.sum() / len(tmp)
 
 
+def mape(orig, pred):
+    tmp = (orig - pred) / orig
+    tmp = np.abs(tmp)
+    return (100 / len(tmp)) * tmp.sum()
+
+
 def undo_norm(ts, mean, sd):
     return ts * sd + mean
 
@@ -115,19 +121,21 @@ def eval_pred(orig, pred, mean, sd):
     # pred_un = undo_norm(pred, mean, sd)
     orig_un = undo_norm_min_max(orig, mean, sd)
     pred_un = undo_norm_min_max(pred, mean, sd)
-    res = mae(orig_un, pred_un)
-    print("MAE: {:f}".format(res))
+    res_mae = mae(orig_un, pred_un)
+    res_mape = mape(orig_un, pred_un)
+    print("MAE: {:f}".format(res_mae))
+    print("MAPE: {:f}".format(res_mape))
 
-    return res
+    return res_mae, res_mape
 
 
 def eval_model_single(model, dt_test, ini, length, obj_var, mean, sd, show_plot=False):
     orig = dt_test[obj_var]
     path = model.predict_single_shot(dt_test.iloc[ini:(ini+length+model.get_input_width()), :],
                                    obj_var=obj_var, length=length, show_plot=show_plot)
-    res = eval_pred(orig, path, mean, sd)
+    res_mae, res_mape = eval_pred(orig, path, mean, sd)
 
-    return res
+    return res_mae, res_mape
 
 
 def eval_model(model, dt_test, ini, length, obj_var, mean, sd, show_plot=False):
@@ -137,9 +145,9 @@ def eval_model(model, dt_test, ini, length, obj_var, mean, sd, show_plot=False):
     orig = dt_test[obj_var][ini:((ini+length+model.get_input_width()))]
     path = model.predict_long_term(dt_test.iloc[ini:((ini+length+model.get_input_width())), :],
                                    obj_var=obj_var, length=length, show_plot=show_plot)
-    res = eval_pred(orig, path[0:len(orig), obj_idx], mean, sd)
+    res_mae, res_mape = eval_pred(orig, path[0:len(orig), obj_idx], mean, sd)
 
-    return res
+    return res_mae, res_mape
 
 
 def eval_test(model, dt_test, cyc_idx_test, ini, length, obj_var, mean, sd, show_plot=False):
@@ -169,26 +177,28 @@ def predict_long_term_full(self, dt, ini, obj_var, length, show_plot=True):
 
 # In case we do more than one forecasting per cycle
 def eval_test_rep(model, dt_test, cyc_idx_test, ini, length, obj_var, mean, sd, show_plot=False, single=False):
-    res = np.array([np.zeros(len(cyc_idx_test.unique())), np.zeros(len(cyc_idx_test.unique()))])
+    cycles = len(cyc_idx_test.unique())
+    res = np.array([np.zeros(cycles), np.zeros(cycles), np.zeros(cycles)]) # MAE, MAPE, exec_time
     j = 0
     pad_size = model.get_input_width() + length
     for i in cyc_idx_test.unique():
         rows = cyc_idx_test == i
         n_preds = (dt_test[rows].shape[0] - ini) // pad_size
-        cyc_res = np.array([np.zeros(n_preds), np.zeros(n_preds)])
+        cyc_res = np.array([np.zeros(n_preds), np.zeros(n_preds), np.zeros(n_preds)]) # MAE, MAPE, exec_time
         for k in range(n_preds):
             tmp = time.time()
             if single:
-                cyc_res[0][k] = eval_model_single(model, dt_test[rows], ini + k * pad_size,
-                                                  length, obj_var, mean, sd, show_plot)
+                cyc_res[0][k], cyc_res[1][k] = eval_model_single(model, dt_test[rows], ini + k * pad_size,
+                                                                 length, obj_var, mean, sd, show_plot)
             else:
-                cyc_res[0][k] = eval_model(model, dt_test[rows], ini + k * pad_size,
-                                           length, obj_var, mean, sd, show_plot)
-            cyc_res[1][k] = time.time() - tmp
+                cyc_res[0][k], cyc_res[1][k] = eval_model(model, dt_test[rows], ini + k * pad_size,
+                                                          length, obj_var, mean, sd, show_plot)
+            cyc_res[2][k] = time.time() - tmp
             print("Elapsed forecasting time: {:f} seconds".format(cyc_res[1][k]))
 
         res[0][j] = cyc_res[0].mean()
         res[1][j] = cyc_res[1].mean()
+        res[2][j] = cyc_res[2].mean()
         j += 1
 
     return res
@@ -224,7 +234,7 @@ def main_pipeline(dt, cv, idx_cyc, obj_var, ini, length, out_steps, conv_width, 
         res = model.predict_long_term(dt_test.iloc[ini:(len(dt_test)), :], obj_var=obj_var, length=length)
         print("Elapsed forecasting time: {:f} seconds".format(time.time() - tmp))
 
-    else:  # Evaluate the MAE of the model
+    else:  # Evaluate the MAE and MAPE of the model
         res = eval_test(model, dt_test, cyc_idx_test, ini, length, obj_var, dt_mean, dt_sd)
 
     return res, model
@@ -282,7 +292,7 @@ def main_pipeline_synth(dt, cv, idx_cyc, obj_var, ini, length, out_steps, units,
         res = model.predict_long_term(dt_test.iloc[ini:(len(dt_test)), :], obj_var=obj_var, length=length)
         print("Elapsed forecasting time: {:f} seconds".format(time.time() - tmp))
 
-    elif mode == 2:  # Evaluate the MAE of the model
+    elif mode == 2:  # Evaluate the MAE and MAPE of the model
         res = eval_test(model, dt_test, cyc_idx_test, ini, length, obj_var, dt_mean, dt_sd)
 
     else:
@@ -290,7 +300,7 @@ def main_pipeline_synth(dt, cv, idx_cyc, obj_var, ini, length, out_steps, units,
                             show_plot=False, single=single)
 
     if not(queue is None):
-        queue.put([res[0], res[1], train_t])
+        queue.put([res[0], res[1], res[2], train_t])
 
     #return [res[0], res[1], train_t], model
 
