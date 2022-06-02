@@ -3,4 +3,5 @@
 .idea/
 /kTsnn/data/*.csv
 /kTsnn/data/*.h5
+/kTsnn/data/res_experiments/
 __pycache__/
