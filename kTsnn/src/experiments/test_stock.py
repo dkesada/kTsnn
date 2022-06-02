@@ -30,18 +30,18 @@ if __name__ == '__main__':
 
     # Settings
     out_steps = 1
-    units = 64
-    input_width = 2
+    units = 50
+    input_width = 1
     ini = 0
     length = 1
     max_epochs = 300
-    patience = 10
+    patience = 500
     model_arch = None
     num_features = 1
 
     for cv in info['cv']:
         queue_cv = Queue()
-        main_pipeline_synth(dt, cv, info['idx_cyc'], info['obj_var'], ini, length,
+        main_pipeline_stock(dt, cv, info['idx_cyc'], info['obj_var'], ini, length,
                             out_steps, units, input_width, num_features, max_epochs, patience, model_arch,
                             mode=3, single=False, queue=queue_cv)
         cv_res = queue_cv.get()
@@ -49,14 +49,6 @@ if __name__ == '__main__':
         res[1].append(cv_res[1].mean())
         res[2].append(cv_res[2].mean())
         res[3].append(cv_res[3])
-
-    # for cv in info['cv']:
-    #     cv_res, _ = main_pipeline_synth(dt, cv, info['idx_cyc'], info['obj_var'], ini, length,
-    #                                     out_steps, units, input_width, num_features, max_epochs, patience, model_arch,
-    #                                     mode=2, single=False)
-    #     res[0].append(cv_res[0].mean())
-    #     res[1].append(cv_res[1].mean())
-    #     res[2].append(cv_res[2])
 
     print("Final MAE of the model: ")
     print(np.mean(res[0]))

@@ -304,3 +304,62 @@ def main_pipeline_synth(dt, cv, idx_cyc, obj_var, ini, length, out_steps, units,
 
     #return [res[0], res[1], train_t], model
 
+
+@multitasking.task
+def main_pipeline_stock(dt, cv, idx_cyc, obj_var, ini, length, out_steps, units, input_width,
+                        num_features, max_epochs, patience, model_arch=None, mode=3, single=False, queue=None):
+    import tensorflow as tf
+    session_conf = tf.compat.v1.ConfigProto(intra_op_parallelism_threads=1, inter_op_parallelism_threads=1)
+    tf.random.set_seed(424242)
+
+    # Obtain the correspondent cycles from the dataset
+    dt_train, dt_test, dt_val, cyc_idx_test = get_train_test_val(dt, cv['test'], cv['val'], idx_cyc)
+    dt_train, dt_test, dt_val, dt_mean, dt_sd = norm_dt_min_max(dt_train, dt_test, dt_val, obj_var)
+
+    model_arch = tf.keras.Sequential([
+        #tf.keras.layers.Lambda(lambda x: x[:, -units:, :]),
+        tf.keras.layers.LSTM(units, return_sequences=True, #activation="swish",
+                             kernel_initializer=tf.initializers.RandomUniform(minval=-0.1, maxval=0.1)),
+        tf.keras.layers.Dropout(0.1),
+        tf.keras.layers.LSTM(units, return_sequences=True,
+                             kernel_initializer=tf.initializers.RandomUniform(minval=-0.1, maxval=0.1)),
+        tf.keras.layers.Dropout(0.1),
+        tf.keras.layers.LSTM(units, return_sequences=True,
+                             kernel_initializer=tf.initializers.RandomUniform(minval=-0.1, maxval=0.1)),
+        tf.keras.layers.Dropout(0.1),
+        tf.keras.layers.Dense(out_steps * num_features,
+                              kernel_initializer=tf.initializers.zeros, activation="linear"),
+        tf.keras.layers.Reshape([out_steps, num_features])])
+
+    # Create the temporal window
+    multi_window = WindowGenerator(input_width=input_width, label_width=out_steps, shift=out_steps,
+                                   dt_train=dt_train, dt_test=dt_test, dt_val=dt_val,
+                                   label_columns=[obj_var])
+
+    # Fit the model
+    train_t = time.time()
+    # model = Conv1dnn(max_epochs, multi_window, num_features, model=model_arch, conv_width=units, out_steps=out_steps)
+    model = AutoLSTM(max_epochs, multi_window, num_features, model=model_arch, units=units, out_steps=out_steps)
+    model.train_net()
+    model.fit_net(patience=patience, show_plot=False)
+    train_t = time.time() - train_t
+    print("Elapsed training time: {:f} seconds".format(train_t))
+
+    # Forecasting
+    if mode == 0:  # Simple prediction of the output
+        res = model.predict(dt_test.iloc[ini:(ini + input_width + out_steps), :], obj_var=obj_var)
+
+    elif mode == 1:  # Forecast of a certain length
+        tmp = time.time()
+        res = model.predict_long_term(dt_test.iloc[ini:(len(dt_test)), :], obj_var=obj_var, length=length)
+        print("Elapsed forecasting time: {:f} seconds".format(time.time() - tmp))
+
+    elif mode == 2:  # Evaluate the MAE and MAPE of the model
+        res = eval_test(model, dt_test, cyc_idx_test, ini, length, obj_var, dt_mean, dt_sd)
+
+    else:
+        res = eval_test_rep(model, dt_test, cyc_idx_test, ini, length, obj_var, dt_mean, dt_sd,
+                            show_plot=False, single=single)
+
+    if not(queue is None):
+        queue.put([res[0], res[1], res[2], train_t])
