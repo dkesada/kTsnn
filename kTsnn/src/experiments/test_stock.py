@@ -30,12 +30,12 @@ if __name__ == '__main__':
 
     # Settings
     out_steps = 1
-    units = 50
+    units = 128
     input_width = 1
     ini = 0
     length = 1
-    max_epochs = 300
-    patience = 500
+    max_epochs = 500
+    patience = 300
     model_arch = None
     num_features = 1
 
